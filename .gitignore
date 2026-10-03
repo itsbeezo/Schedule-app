@@ -13,3 +13,6 @@ build/
 # misc
 .DS_Store
 npm-debug.log*
+
+# superpowers visual companion mockups
+.superpowers/

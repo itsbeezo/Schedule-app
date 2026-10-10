@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import React, { useState } from 'react';
 import EventDialog from './EventDialog';
 
 // datetime-local inputs and emoji are unreliable with userEvent.type in jsdom, so set those values directly.
@@ -36,6 +37,7 @@ test('saving sends ISO times, kind, color and trimmed title', async () => {
     },
     undefined
   );
+  await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled());
 });
 
 test('refuses an empty title and an end that is not after the start', async () => {
@@ -54,6 +56,7 @@ test('accepts a 200-character emoji title without complaint', async () => {
   setValue(screen.getByLabelText(/title/i), '🎉'.repeat(100));
   await userEvent.click(screen.getByRole('button', { name: /save/i }));
   expect(props.onSave).toHaveBeenCalled();
+  await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled());
 });
 
 test('rejects a title over 200 characters', async () => {
@@ -77,6 +80,7 @@ test('edit mode shows a two-step delete', async () => {
   expect(props.onDelete).not.toHaveBeenCalled();
   await userEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
   expect(props.onDelete).toHaveBeenCalledWith('e1');
+  await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled());
 });
 
 test('Escape closes the dialog', async () => {
@@ -91,4 +95,75 @@ test('stays open and shows the error when saving fails', async () => {
   await userEvent.click(screen.getByRole('button', { name: /save/i }));
   expect(await screen.findByText(/server said no/i)).toBeInTheDocument();
   expect(props.onClose).not.toHaveBeenCalled();
+});
+
+test('does not log an act() warning when a successful save unmounts the dialog', async () => {
+  const err = jest.spyOn(console, 'error').mockImplementation(() => {});
+  function Host() {
+    const [open, setOpen] = useState(true);
+    return open ? (
+      <EventDialog mode="create" initial={initial} onSave={async () => setOpen(false)} onClose={() => setOpen(false)} />
+    ) : <p>closed</p>;
+  }
+  render(<Host />);
+  await userEvent.type(screen.getByLabelText(/title/i), 'X');
+  await userEvent.click(screen.getByRole('button', { name: /save/i }));
+  expect(await screen.findByText('closed')).toBeInTheDocument();
+  expect(err).not.toHaveBeenCalled();
+  err.mockRestore();
+});
+
+test('a double click on Confirm delete deletes once', async () => {
+  let resolve: () => void = () => {};
+  const onDelete = jest.fn().mockImplementation(() => new Promise<void>((r) => { resolve = r; }));
+  setup({ mode: 'edit', initial: { ...initial, id: 'e1', title: 'P' }, onDelete });
+  await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+  await userEvent.dblClick(screen.getByRole('button', { name: /confirm delete/i }));
+  expect(onDelete).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('button', { name: /confirm delete/i })).toBeDisabled();
+  await act(async () => resolve());
+});
+
+test('a failed delete shows the error in the dialog and re-enables the button', async () => {
+  const onDelete = jest.fn().mockRejectedValue(new Error('Nope'));
+  setup({ mode: 'edit', initial: { ...initial, id: 'e1', title: 'P' }, onDelete });
+  await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+  await userEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+  expect(await screen.findByText(/nope/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /confirm delete/i })).toBeEnabled();
+});
+
+test('Escape is ignored while a save is in flight', async () => {
+  const props = setup({ onSave: jest.fn().mockImplementation(() => new Promise(() => {})) });
+  await userEvent.type(screen.getByLabelText(/title/i), 'X');
+  await userEvent.click(screen.getByRole('button', { name: /save/i }));
+  await userEvent.keyboard('{Escape}');
+  expect(props.onClose).not.toHaveBeenCalled();
+});
+
+test('Tab and Shift+Tab wrap within the dialog', async () => {
+  setup();
+  const save = screen.getByRole('button', { name: /save/i });
+  save.focus();
+  await userEvent.tab();
+  expect(screen.getByLabelText(/title/i)).toHaveFocus();
+  await userEvent.tab({ shift: true });
+  expect(save).toHaveFocus();
+});
+
+test('focus returns to the previously focused element on close', async () => {
+  function Host() {
+    const [open, setOpen] = useState(false);
+    return (
+      <>
+        <button onClick={() => setOpen(true)}>trigger</button>
+        {open && <EventDialog mode="create" initial={initial} onSave={jest.fn()} onClose={() => setOpen(false)} />}
+      </>
+    );
+  }
+  render(<Host />);
+  await userEvent.click(screen.getByRole('button', { name: 'trigger' }));
+  expect(screen.getByLabelText(/title/i)).toHaveFocus();
+  await userEvent.keyboard('{Escape}');
+  expect(screen.getByRole('button', { name: 'trigger' })).toHaveFocus();
 });

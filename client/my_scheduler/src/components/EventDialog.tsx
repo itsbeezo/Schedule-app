@@ -36,10 +36,43 @@ export default function EventDialog({ mode, initial, onSave, onDelete, onClose }
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLFormElement>(null);
+  const mounted = useRef(true);
+  const busyRef = useRef(false);
+  busyRef.current = busy;
+
+  useEffect(() => {
+    mounted.current = true;
+    const previous = document.activeElement as HTMLElement | null;
+    return () => {
+      mounted.current = false;
+      previous?.focus?.();
+    };
+  }, []);
 
   useEffect(() => titleRef.current?.focus(), []);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (!busyRef.current) onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !dialogRef.current) return;
+      const items = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>('button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])')
+      ).filter((el) => !(el as HTMLButtonElement).disabled);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !dialogRef.current.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !dialogRef.current.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
@@ -68,14 +101,24 @@ export default function EventDialog({ mode, initial, onSave, onDelete, onClose }
       );
     } catch (err) {
       setErrors({ form: err instanceof Error ? err.message : 'Could not save the event.' });
-    } finally {
-      setBusy(false);
     }
+    if (mounted.current) setBusy(false);
+  }
+
+  async function confirmDelete() {
+    if (busy || !initial.id || !onDelete) return;
+    setBusy(true);
+    try {
+      await onDelete(initial.id);
+    } catch (err) {
+      if (mounted.current) setErrors({ form: err instanceof Error ? err.message : 'Could not delete the event.' });
+    }
+    if (mounted.current) setBusy(false);
   }
 
   return (
     <div className="dialog__backdrop">
-      <form className="dialog" role="dialog" aria-modal="true" aria-labelledby="event-dialog-title" onSubmit={submit}>
+      <form ref={dialogRef} className="dialog" role="dialog" aria-modal="true" aria-labelledby="event-dialog-title" onSubmit={submit}>
         <h2 className="dialog__title" id="event-dialog-title">
           {mode === 'create' ? 'New event' : 'Edit event'}
         </h2>
@@ -116,7 +159,7 @@ export default function EventDialog({ mode, initial, onSave, onDelete, onClose }
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {mode === 'edit' && initial.id && onDelete &&
             (confirmingDelete ? (
-              <button type="button" className="btn" onClick={() => void onDelete(initial.id!)}>
+              <button type="button" className="btn" disabled={busy} onClick={() => void confirmDelete()}>
                 Confirm delete
               </button>
             ) : (

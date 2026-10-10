@@ -123,6 +123,20 @@ describe('PUT /api/events/:id', () => {
     expect(res.body.error.code).toBe('validation_error');
   });
 
+  test('rejects the reserved color on update', async () => {
+    const created = (await request(appA).post('/api/events').send({ ...valid, color: '#4A63F0' })).body;
+    const res = await request(appA).put(`/api/events/${created.id}`).send({ color: '#FF8A5B' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('reserved_color');
+  });
+
+  test('clears the color when null is sent', async () => {
+    const created = (await request(appA).post('/api/events').send({ ...valid, color: '#4A63F0' })).body;
+    const res = await request(appA).put(`/api/events/${created.id}`).send({ color: null });
+    expect(res.status).toBe(200);
+    expect(res.body.color).toBeNull();
+  });
+
   test('returns 404 for an unknown id', async () => {
     const res = await request(appA).put('/api/events/99999999-9999-4999-8999-999999999999').send({ title: 'x' });
     expect(res.status).toBe(404);
@@ -158,5 +172,19 @@ describe('DELETE /api/events/:id', () => {
     const created = (await request(appB).post('/api/events').send(valid)).body;
     expect((await request(appA).delete(`/api/events/${created.id}`)).status).toBe(404);
     expect((await request(appB).get('/api/events')).body).toHaveLength(1);
+  });
+});
+
+describe('database role', () => {
+  test('the app pool is a non-owner role without BYPASSRLS', async () => {
+    const { rows } = await appPool.query(
+      `SELECT current_user AS u, r.rolbypassrls, r.rolsuper,
+              (SELECT tableowner FROM pg_tables WHERE tablename = 'events') AS owner
+       FROM pg_roles r WHERE r.rolname = current_user`
+    );
+    expect(rows[0].u).toBe('app_user');
+    expect(rows[0].owner).not.toBe(rows[0].u);
+    expect(rows[0].rolbypassrls).toBe(false);
+    expect(rows[0].rolsuper).toBe(false);
   });
 });

@@ -34,6 +34,7 @@
   min-height: 40px; padding: 8px 12px; background: var(--color-surface);
   border: 1px solid var(--color-border); border-radius: var(--radius-input);
 }
+.field__input:hover { border-color: var(--color-muted); }
 .field__input:focus-visible { border-color: var(--color-purple); }
 .field__error { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); }
 .field__error::before {
@@ -42,7 +43,8 @@
 }
 
 .swatch { width: 28px; height: 28px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
-.swatch--selected { border-color: var(--color-text); }
+.swatch:hover { border-color: var(--color-muted); }
+.swatch--selected, .swatch--selected:hover { border-color: var(--color-text); }
 
 .toast {
   position: fixed; bottom: var(--space-3); left: 50%; transform: translateX(-50%); z-index: 60;
@@ -68,6 +70,7 @@
   background: var(--color-coral); color: var(--color-on-coral); border: 0; border-radius: var(--radius-pill);
   font-size: var(--text-sm); font-weight: 700; cursor: pointer;
 }
+.conflict-badge:hover { filter: brightness(1.1); }
 .conflict-badge--ignored { background: var(--color-surface); color: var(--color-muted); border: 1px solid var(--color-muted); font-weight: 600; }
 
 .popover {
@@ -88,4 +91,10 @@
   .settings { width: 100%; border-radius: 0; }
   .dialog { padding: var(--space-2); }
   .app-shell { padding: var(--space-1); }
+}
+
+.dialog { color-scheme: dark; }
+.dialog input[type='color'] {
+  width: 44px; height: 28px; padding: 2px 4px; cursor: pointer;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-pill);
 }

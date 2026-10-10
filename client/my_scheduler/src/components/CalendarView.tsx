@@ -30,7 +30,7 @@ export const CALENDAR_OPTIONS: CalendarOptions = {
   longPressDelay: 400,
   eventLongPressDelay: 400,
   selectLongPressDelay: 400,
-  height: 'auto',
+  height: 'max(480px, calc(100vh - 12rem))',
 };
 
 export function toFullCalendarEvent(e: ApiEvent) {

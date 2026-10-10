@@ -147,3 +147,15 @@ describe('scrollTime', () => {
     expect(screen.getByTestId('calendar')).toHaveAttribute('data-scroll-time', '06:30');
   });
 });
+
+test('the calendar has a bounded height so the time grid scrolls internally', () => {
+  expect(CALENDAR_OPTIONS.height).toMatch(/^max\(480px, calc\(100vh/);
+  expect(CALENDAR_OPTIONS.height).not.toBe('auto');
+});
+
+test('no slotMinTime/slotMaxTime reaches FullCalendar', async () => {
+  renderView();
+  await screen.findByText('Planning');
+  expect(screen.getByTestId('calendar')).not.toHaveAttribute('data-slot-min-time');
+  expect(screen.getByTestId('calendar')).not.toHaveAttribute('data-slot-max-time');
+});

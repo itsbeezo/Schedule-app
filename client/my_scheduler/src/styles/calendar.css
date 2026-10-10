@@ -37,7 +37,7 @@
 .fc .fc-event-title, .fc .fc-event-time { overflow-wrap: normal; word-break: keep-all; }
 .fc .fc-timegrid-event-short { padding-top: 0; padding-bottom: 0; }
 .fc .fc-timegrid-event-short .fc-event-main { line-height: 1.2; }
-.fc .fc-event { container-type: size; }
+.fc .fc-timegrid-event { container-type: size; }
 /* Half-hour blocks: time and title on one row so the title is not clipped */
 @container (max-height: 40px) {
   .fc .fc-event-main-frame { flex-direction: row; align-items: baseline; gap: 6px; overflow: hidden; }
@@ -77,12 +77,13 @@
 @media (max-width: 600px) {
   .fc .fc-toolbar { flex-wrap: wrap; gap: var(--space-1); }
   .fc .fc-toolbar-title { font-size: var(--text-lg); }
-  .fc .fc-view-harness {
+  /* week only: the 3-day, day and month views fit the phone width and must not scroll sideways */
+  .fc .fc-view-harness:has(.fc-timeGridWeek-view) {
     overflow-x: auto;
     /* right-edge fade says "scroll"; it shrinks to nothing as the grid reaches its end */
     -webkit-mask-image: linear-gradient(to right, var(--color-bg) calc(100% - var(--edge)), transparent);
     mask-image: linear-gradient(to right, var(--color-bg) calc(100% - var(--edge)), transparent);
     animation: edge-fade linear both; animation-timeline: scroll(self inline);
   }
-  .fc .fc-scrollgrid { min-width: 640px; }
+  .fc .fc-timeGridWeek-view .fc-scrollgrid { min-width: 640px; }
 }

@@ -175,17 +175,23 @@ git worktree add .worktrees/design   -b agents/design   Calender-dev
 
 Each worktree needs its own dependencies. Run `npm install` in `server/` and `client/my_scheduler/` inside each worktree that will touch them (backend: `server/`; frontend and design: `client/my_scheduler/`).
 
-- [ ] **Step 4: Create the databases (Postgres 18 is running locally; the `postgres` role connects over the socket without a password)**
+- [ ] **Step 4: Create the project's private Postgres cluster and databases**
+
+This project does NOT use the system Postgres service (which keeps its data on the root partition and also holds the owner's other projects' databases, which are out of scope and must never be touched). It uses a private cluster under the owner's home partition, run as the owner's user, listening on a unix socket only (port 5433, socket directory `$HOME/pgdata/schedule-app/sock`), managed by `scripts/dev-db.sh`:
 
 ```bash
-psql -U postgres -c "CREATE DATABASE schedule_test" -c "CREATE DATABASE schedule_dev"
+cd /home/beezo/Documents/GitHub/Schedule-app
+scripts/dev-db.sh init      # once: creates the cluster plus schedule_dev and schedule_test
+scripts/dev-db.sh status    # expected: "server is running"
+scripts/dev-db.sh url       # prints host=<socket dir> port=5433
 ```
 
-Expected: `CREATE DATABASE` twice.
+Expected from `init`: `CREATE DATABASE` twice. After a reboot, run `scripts/dev-db.sh start`. The cluster must be running whenever server tests or the dev server run.
 
 - [ ] **Step 5: Round gate (run at the end of every round, on the integration branch after merging the round's branches)**
 
 ```bash
+scripts/dev-db.sh status         # the private Postgres must be running
 cd server && npm test            # all server tests pass
 cd ../client/my_scheduler && CI=true npm test -- --watchAll=false   # all client tests pass
 npm run build                    # client builds
@@ -250,14 +256,18 @@ module.exports = {
 - [ ] **Step 4: Create `server/tests/helpers/env.ts`**
 
 ```ts
-process.env.TEST_MIGRATION_DATABASE_URL ??= 'postgresql://postgres@/schedule_test?host=/run/postgresql';
-process.env.TEST_DATABASE_URL ??= 'postgresql://app_user@/schedule_test?host=/run/postgresql';
+// Private cluster managed by scripts/dev-db.sh (unix socket only, see Task 0 Step 4).
+const sock = process.env.SCHEDULE_PG_SOCKET ?? `${process.env.HOME}/pgdata/schedule-app/sock`;
+const port = process.env.SCHEDULE_PG_PORT ?? '5433';
+process.env.TEST_MIGRATION_DATABASE_URL ??= `postgresql://postgres@/schedule_test?host=${sock}&port=${port}`;
+process.env.TEST_DATABASE_URL ??= `postgresql://app_user@/schedule_test?host=${sock}&port=${port}`;
 ```
 
 - [ ] **Step 5: Verify the socket connection string works**
 
 ```bash
-node -e "const {Pool}=require('pg');new Pool({connectionString:'postgresql://postgres@/schedule_test?host=/run/postgresql'}).query('select 1 as ok').then(r=>{console.log(r.rows);process.exit()})"
+SOCK="$HOME/pgdata/schedule-app/sock"
+node -e "const {Pool}=require('pg');new Pool({connectionString:'postgresql://postgres@/schedule_test?host=$SOCK&port=5433'}).query('select 1 as ok').then(r=>{console.log(r.rows);process.exit()})"
 ```
 
 Expected: `[ { ok: 1 } ]`. If it fails, stop and report; the connection string format is the thing to fix before continuing.
@@ -489,9 +499,10 @@ Expected: PASS, 4 tests.
 ```
 PORT=4000
 # App connection: non-owner role (created by migration 002)
-DATABASE_URL=postgresql://app_user@/schedule_dev?host=/run/postgresql
+# (private cluster from scripts/dev-db.sh: unix socket under your home partition, port 5433)
+DATABASE_URL=postgresql://app_user@/schedule_dev?host=/home/beezo/pgdata/schedule-app/sock&port=5433
 # Migration connection: owner role
-MIGRATION_DATABASE_URL=postgresql://postgres@/schedule_dev?host=/run/postgresql
+MIGRATION_DATABASE_URL=postgresql://postgres@/schedule_dev?host=/home/beezo/pgdata/schedule-app/sock&port=5433
 CURRENT_USER_ID=00000000-0000-4000-8000-000000000001
 USER_TIMEZONE=UTC
 ```
@@ -1575,6 +1586,7 @@ Expected: PASS for all files. Also run `npx tsc -p tsconfig.build.json --noEmit`
 - [ ] **Step 11: Run the dev server once to confirm startup**
 
 ```bash
+../scripts/dev-db.sh status   # must be running; otherwise ../scripts/dev-db.sh start
 cp .env.example .env
 npm run migrate        # expected: Applied: 001_schema.sql, 002_rls.sql
 npm run dev            # expected: "Server running on port 4000"
@@ -5388,6 +5400,7 @@ Add to `package.json` scripts: `"design:shots:app": "node design/screenshot-app.
 
 ```bash
 # terminal 1 (from the repo root, in the integration checkout or your merged worktree)
+scripts/dev-db.sh start    # no-op error if already running; check with scripts/dev-db.sh status
 cd server && cp -n .env.example .env && npm run migrate && npm run seed:demo && npm run dev
 # terminal 2
 cd client/my_scheduler && BROWSER=none npm start      # serves http://localhost:3000, proxies /api to :4000
@@ -5468,7 +5481,7 @@ At each checkpoint, report: what was built, both reviewers' verdicts, exact test
 ### CP2: Core calendar (after Round 4)
 
 - [ ] Spec coverage: create, edit, delete, drag-to-move, drag-to-resize all work end to end against Postgres; RLS tests pass; work-hours and zones routes exist.
-- [ ] How to try it: `cd server && npm run migrate && npm run seed:demo && npm run dev`, then `cd client/my_scheduler && npm start`; open http://localhost:3000, drag an event, drag its bottom edge, double-check a failed save by stopping the server and dragging.
+- [ ] How to try it: `scripts/dev-db.sh start` (if not running), then `cd server && npm run migrate && npm run seed:demo && npm run dev`, then `cd client/my_scheduler && npm start`; open http://localhost:3000, drag an event, drag its bottom edge, double-check a failed save by stopping the server and dragging.
 - [ ] Both reviewers' verdicts and the live-app screenshots are attached.
 
 ### CP3: Conflicts and settings (after Round 6)

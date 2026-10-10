@@ -87,7 +87,29 @@
 }
 .settings__section { margin-bottom: var(--space-3); }
 
+/* The toast and the toolbar are both fixed at the bottom centre: lift the toast above the toolbar when it is shown. */
+body:has(.selection-toolbar) .toast { bottom: calc(var(--space-3) + 72px); }
+.selection-toolbar .field__label { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 32px; }
+.selection-toolbar input[type='checkbox'] { width: 20px; height: 20px; margin: 0; accent-color: var(--color-mint); }
+
 @media (max-width: 600px) {
+  /* Phone selection toolbar: a full-width card with tidy rows (Mark zone, Repeat weekly, then Add and Cancel
+     side by side). !important beats the inline display style the component puts on the label. */
+  .selection-toolbar {
+    left: var(--space-1); right: var(--space-1); bottom: var(--space-1); transform: none;
+    flex-wrap: wrap; justify-content: stretch; gap: var(--space-1); padding: var(--space-2);
+    border-radius: var(--radius-card);
+  }
+  .selection-toolbar .btn { min-height: 44px; flex: 1 1 calc(50% - var(--space-1)); }
+  .selection-toolbar .btn:nth-child(2):not(:last-child) { order: 1; flex-basis: 100%; }
+  .selection-toolbar .field__label { order: 2; flex: 1 1 100%; min-height: 44px; }
+  .selection-toolbar > .btn:first-child { order: 3; }
+  .selection-toolbar > .btn:last-child { order: 4; }
+  /* toast stacks just above the toolbar on phones (toolbar is ~84px tall with Add/Cancel only, ~190px with the
+     zone controls); a full-width toast with a fixed offset can never cover its buttons */
+  .toast { width: calc(100% - 2 * var(--space-2)); }
+  body:has(.selection-toolbar) .toast { bottom: 100px; }
+  body:has(.selection-toolbar .field__label) .toast { bottom: 204px; }
   .settings { width: 100%; border-radius: 0; }
   .dialog { padding: var(--space-2); }
   .app-shell { padding: var(--space-1); }

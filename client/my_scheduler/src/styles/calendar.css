@@ -28,14 +28,29 @@
 .fc .fc-event-title { overflow-wrap: anywhere; }
 
 .cal-event { border-radius: var(--radius-event); background-color: var(--color-royal); color: var(--color-on-royal); }
-.cal-event--time-block { box-shadow: inset 4px 0 0 var(--color-light-blue); }
-.fc .fc-event.cal-event--time-block { padding-left: 10px; }
-.cal-event--conflict { outline: 2px solid var(--color-coral); outline-offset: -2px; }
-.cal-event--ignored { background-color: var(--color-raised); color: var(--color-text); outline: 2px dashed var(--color-muted); outline-offset: -2px; }
+.fc .fc-event.cal-event--time-block { box-shadow: inset 4px 0 0 var(--color-light-blue); padding-left: 10px; }
+.fc .fc-event-title { font-weight: 600; }
+.fc .fc-event-time { font-weight: 500; }
+.fc .fc-event:hover { filter: brightness(1.1); }
+.fc .fc-event.cal-event--conflict { outline: 2px solid var(--color-coral); outline-offset: -2px; }
+.fc .fc-event.cal-event--ignored {
+  /* !important: FullCalendar writes a custom event color as an inline style, which beats any selector */
+  background-color: var(--color-surface) !important; color: var(--color-muted) !important;
+  outline: 2px dashed var(--color-muted); outline-offset: -2px;
+}
+.fc .fc-event.cal-event--ignored .fc-event-main { color: var(--color-muted); }
 
-.cal-work-hours { background: var(--color-work-hours) !important; border: 0 !important; border-radius: var(--radius-event); }
-.cal-zone {
-  background: var(--color-zone-bg) !important; border: 1px dashed var(--color-light-blue) !important;
+.fc .fc-bg-event.cal-work-hours { opacity: 1; background: var(--color-work-hours) !important; border: 0 !important; border-radius: var(--radius-event); }
+.fc .fc-bg-event.cal-zone {
+  opacity: 1; background: var(--color-zone-bg) !important; border: 1px dashed var(--color-light-blue) !important;
   border-radius: var(--radius-event);
 }
-.cal-zone .fc-event-title { color: var(--color-light-blue); font-size: var(--text-sm); font-weight: 600; }
+.fc .cal-zone .fc-event-title { color: var(--color-light-blue); font-size: var(--text-sm); font-weight: 600; }
+
+@media (max-width: 600px) {
+  .fc .fc-toolbar { flex-wrap: wrap; gap: var(--space-1); }
+  .fc .fc-toolbar-title { font-size: var(--text-lg); }
+  .fc .fc-view-harness { overflow-x: auto; }
+  .fc .fc-scrollgrid { min-width: 640px; }
+  .fc .fc-event-title { overflow-wrap: break-word; }
+}

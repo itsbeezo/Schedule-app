@@ -27,6 +27,7 @@
   "scripts": {
     "start": "react-scripts start",
     "design:shots": "node design/screenshot.mjs",
+    "design:shots:app": "node design/screenshot-app.mjs",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

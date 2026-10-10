@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CalendarView, { CALENDAR_OPTIONS, toFullCalendarEvent } from './CalendarView';
 import { ToastProvider } from './Toast';
@@ -58,4 +58,47 @@ test('the calendar is configured for 15-minute snapping, no all-day row, and pre
     eventLongPressDelay: 400,
     selectLongPressDelay: 400,
   });
+});
+
+test('Add event opens an empty dialog and creating refreshes the calendar', async () => {
+  mocked.createEvent.mockResolvedValue(ev({ id: 'new', title: 'Created' }));
+  renderView();
+  await screen.findByText('Planning');
+  await userEvent.click(screen.getByRole('button', { name: /add event/i }));
+  await userEvent.type(screen.getByLabelText(/title/i), 'Created');
+  await userEvent.click(screen.getByRole('button', { name: /save/i }));
+  await waitFor(() => expect(mocked.createEvent).toHaveBeenCalledWith(expect.objectContaining({ title: 'Created' })));
+  await waitFor(() => expect(mocked.listEvents).toHaveBeenCalledTimes(2));
+});
+
+test('dragging a range offers Add event in a toolbar, which opens the dialog on that range', async () => {
+  renderView();
+  await screen.findByText('Planning');
+  await userEvent.click(screen.getByText('mock-select'));
+  const toolbar = screen.getByRole('toolbar');
+  await userEvent.click(within(toolbar).getByRole('button', { name: /add event/i }));
+  expect(screen.getByLabelText(/^start/i)).toHaveValue('2026-10-06T09:00');
+});
+
+test('clicking an event opens it for editing and saving updates it', async () => {
+  mocked.updateEvent.mockResolvedValue(ev({ title: 'Renamed' }));
+  renderView();
+  await screen.findByText('Planning');
+  await userEvent.click(screen.getByRole('button', { name: /open planning/i }));
+  const title = screen.getByLabelText(/title/i);
+  await userEvent.clear(title);
+  await userEvent.type(title, 'Renamed');
+  await userEvent.click(screen.getByRole('button', { name: /save/i }));
+  await waitFor(() => expect(mocked.updateEvent).toHaveBeenCalledWith('e1', expect.objectContaining({ title: 'Renamed' })));
+});
+
+test('deleting an event calls the API and closes the dialog', async () => {
+  mocked.deleteEvent.mockResolvedValue(undefined);
+  renderView();
+  await screen.findByText('Planning');
+  await userEvent.click(screen.getByRole('button', { name: /open planning/i }));
+  await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+  await userEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+  await waitFor(() => expect(mocked.deleteEvent).toHaveBeenCalledWith('e1'));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 });

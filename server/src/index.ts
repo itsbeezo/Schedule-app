@@ -1,14 +1,17 @@
-import express from 'express';
-import cors from 'cors';
-import eventsRouter from './routes/events';
-import dotenv from 'dotenv';
+import { createApp } from './app';
+import { config } from './config';
+import { createPool, ensureUser } from './db';
 
-dotenv.config();
-const app = express();
-app.use(cors(), express.json());
-app.use('/api/events', eventsRouter);
+async function main() {
+  if (!config.databaseUrl) throw new Error('DATABASE_URL is not set (see server/.env.example)');
+  const pool = createPool(config.databaseUrl);
+  await ensureUser(pool, config.userId, config.userTimezone);
+  createApp({ pool, userId: config.userId }).listen(config.port, () => {
+    console.log(`Server running on port ${config.port}`);
+  });
+}
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });

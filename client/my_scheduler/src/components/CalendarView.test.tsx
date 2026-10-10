@@ -341,3 +341,50 @@ describe('readable event labels for narrow blocks', () => {
     expect(screen.getByTestId('event-e1')).toHaveAttribute('title', expect.stringMatching(/^Planning, /));
   });
 });
+
+describe('unconflicted zones', () => {
+  test('the toolbar offers Mark as unconflicted zone and saves the dragged range', async () => {
+    mocked.createZone.mockResolvedValue({ id: 'z', start_at: '', end_at: '', repeats_weekly: false });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByText('mock-select'));
+    await userEvent.click(screen.getByRole('button', { name: /mark as unconflicted zone/i }));
+    await waitFor(() =>
+      expect(mocked.createZone).toHaveBeenCalledWith({
+        start_at: new Date(2026, 9, 6, 9, 0).toISOString(),
+        end_at: new Date(2026, 9, 6, 10, 0).toISOString(),
+        repeats_weekly: false,
+      })
+    );
+    await waitFor(() => expect(mocked.listZones).toHaveBeenCalledTimes(2));
+  });
+
+  test('"Repeat weekly" makes the zone repeat', async () => {
+    mocked.createZone.mockResolvedValue({ id: 'z', start_at: '', end_at: '', repeats_weekly: true });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByText('mock-select'));
+    await userEvent.click(screen.getByLabelText(/repeat weekly/i));
+    await userEvent.click(screen.getByRole('button', { name: /mark as unconflicted zone/i }));
+    await waitFor(() => expect(mocked.createZone).toHaveBeenCalledWith(expect.objectContaining({ repeats_weekly: true })));
+  });
+
+  test('zones from the server are drawn as background bands', async () => {
+    mocked.listZones.mockResolvedValue([
+      { id: 'z', start_at: new Date(2026, 9, 6, 9, 0).toISOString(), end_at: new Date(2026, 9, 6, 17, 0).toISOString(), repeats_weekly: false },
+    ]);
+    renderView();
+    await screen.findByText('Planning');
+    await waitFor(() => expect(screen.getByTestId('bands')).toHaveTextContent('2'));
+  });
+
+  test('a failed zone save shows a toast and keeps the toolbar', async () => {
+    mocked.createZone.mockRejectedValue(new Error('end_at must be after start_at'));
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByText('mock-select'));
+    await userEvent.click(screen.getByRole('button', { name: /mark as unconflicted zone/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('end_at must be after start_at');
+    expect(screen.getByRole('toolbar')).toBeInTheDocument();
+  });
+});

@@ -17,6 +17,7 @@ import ConflictBadge from './ConflictBadge';
 import ConflictPopover from './ConflictPopover';
 import { ConflictInfo, eventConflictState, indexConflicts } from '../lib/conflictIndex';
 import { workHoursToBackground } from '../lib/workHoursBand';
+import { zonesToBackground } from '../lib/zoneBand';
 import { readableTextOn } from '../styles/contrast';
 
 export const CALENDAR_OPTIONS: CalendarOptions = {
@@ -116,9 +117,25 @@ export default function CalendarView() {
         return { ...fc, classNames: [...fc.classNames, ...extra] };
       }),
       ...(data.range ? workHoursToBackground(data.workHours, data.range.from, data.range.to) : []),
+      ...(data.range ? zonesToBackground(data.zones, data.range.from, data.range.to) : []),
     ],
-    [data.events, data.workHours, data.range, conflictIndex]
+    [data.events, data.workHours, data.zones, data.range, conflictIndex]
   );
+
+  async function markZone(repeatsWeekly: boolean) {
+    if (!selection) return;
+    try {
+      await api.createZone({
+        start_at: selection.start.toISOString(),
+        end_at: selection.end.toISOString(),
+        repeats_weekly: repeatsWeekly,
+      });
+      setSelection(null);
+      await data.reload();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Could not create the zone.');
+    }
+  }
 
   function newDraft(start: Date, end: Date): EventDraft {
     return { title: '', start, end, kind: 'event', color: getDefaultEventColor(), notes: null };
@@ -215,6 +232,7 @@ export default function CalendarView() {
             setDraft({ mode: 'create', value: newDraft(selection.start, selection.end) });
             setSelection(null);
           }}
+          onMarkZone={(weekly) => void markZone(weekly)}
           onCancel={() => setSelection(null)}
         />
       )}

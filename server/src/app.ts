@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import { errorHandler, notFoundHandler } from './errors';
+import { conflictsRouter } from './routes/conflicts';
 import { conflictIgnoresRouter } from './routes/conflictIgnores';
 import { conflictZonesRouter } from './routes/conflictZones';
 import { eventsRouter } from './routes/events';
@@ -14,7 +15,7 @@ export function createApp(ctx: Ctx): express.Express {
   app.use('/api/work-hours', workHoursRouter(ctx));
   app.use('/api/conflict-zones', conflictZonesRouter(ctx));
   app.use('/api/conflict-ignores', conflictIgnoresRouter(ctx));
-  // Task 6 mounts /api/conflicts here.
+  app.use('/api/conflicts', conflictsRouter(ctx));
   app.use(notFoundHandler);
   app.use(errorHandler);
   return app;

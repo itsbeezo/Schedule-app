@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CP1 static calendar</title>
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/400.css" />
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/600.css" />
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/700.css" />
+  <link rel="stylesheet" href="../../src/styles/tokens.css" />
+  <link rel="stylesheet" href="../../src/styles/base.css" />
+  <link rel="stylesheet" href="../../src/styles/components.css" />
+  <link rel="stylesheet" href="../../src/styles/calendar.css" />
+  <style>
+    /* Mockup-only layout. Colors come from tokens only. */
+    .grid { display: grid; grid-template-columns: 56px repeat(5, 1fr); gap: 0; border-radius: var(--radius-card); overflow: hidden; background: var(--color-surface); border: 1px solid var(--color-border); }
+    .head { padding: var(--space-1); text-align: center; font-weight: 600; border-bottom: 1px solid var(--color-border); }
+    .head--today { background: var(--color-purple-soft); }
+    .hours, .day { position: relative; height: 480px; }
+    .hours span { position: absolute; right: 8px; font-size: var(--text-sm); color: var(--color-muted); transform: translateY(-50%); }
+    .day { border-left: 1px solid var(--color-border); background-image: linear-gradient(to bottom, var(--color-border) 1px, transparent 1px); background-size: 100% 48px; }
+    .day .cal-work-hours, .day .cal-zone, .day .cal-event { position: absolute; left: 4px; right: 4px; }
+    .day .cal-event { padding: 4px 8px; font-size: var(--text-sm); font-weight: 600; overflow: hidden; }
+    .day .cal-event.cal-event--time-block { padding-left: 10px; }
+    .half-l { right: 50% !important; } .half-r { left: 50% !important; }
+    .cal-event .conflict-badge { margin-top: 4px; display: inline-flex; }
+    .conflict-badge svg { width: 14px; height: 14px; flex: none; }
+    .zone-label { color: var(--color-light-blue); font-size: var(--text-sm); font-weight: 600; padding: 4px 8px; }
+    .legend { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-2); }
+    .legend .chip { padding: 4px 12px; border-radius: var(--radius-pill); font-size: var(--text-sm); font-weight: 600; }
+    @media (max-width: 900px) { .badge-text { display: none; } .day .cal-event { padding: 4px; } }
+    @media (max-width: 600px) { .grid { grid-template-columns: 40px repeat(3, 1fr); } .day--extra, .head--extra { display: none; } }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="conflict-icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5V8l2.2 1.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13.5 1.5v3M13.5 5.8v.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  </svg>
+  <div class="app-shell">
+    <header class="app-header">
+      <h1 class="app-title">Week of Oct 5</h1>
+      <button class="btn btn--primary" type="button">+ Add event</button>
+    </header>
+
+    <div class="grid">
+      <div class="head"></div>
+      <div class="head head--today">Mon 5</div>
+      <div class="head head--extra">Tue 6</div>
+      <div class="head">Wed 7</div>
+      <div class="head head--extra">Thu 8</div>
+      <div class="head">Fri 9</div>
+
+      <div class="hours">
+        <span style="top:0">8</span><span style="top:48px">9</span><span style="top:96px">10</span><span style="top:144px">11</span>
+        <span style="top:192px">12</span><span style="top:240px">1</span><span style="top:288px">2</span><span style="top:336px">3</span>
+        <span style="top:384px">4</span><span style="top:432px">5</span>
+      </div>
+
+      <!-- Mon: time block + ACTIVE conflict -->
+      <div class="day">
+        <div class="cal-work-hours" style="top:48px;height:384px"></div>
+        <div class="cal-event cal-event--time-block" style="top:48px;height:96px">Deep work</div>
+        <div class="cal-event cal-event--conflict half-l" style="top:288px;height:48px">Team sync</div>
+        <div class="cal-event cal-event--conflict half-r" style="top:312px;height:72px">Dentist<br /><button class="conflict-badge" type="button" aria-label="Conflict"><svg aria-hidden="true"><use href="#conflict-icon"/></svg><span class="badge-text">Conflict</span></button></div>
+      </div>
+
+      <!-- Tue: plain events, one with a user-chosen color -->
+      <div class="day day--extra">
+        <div class="cal-work-hours" style="top:48px;height:384px"></div>
+        <div class="cal-event cal-event--time-block" style="top:96px;height:72px">Planning</div>
+        <div class="cal-event" style="top:192px;height:48px;background-color:#7B5CD6">Lunch with Sam</div>
+      </div>
+
+      <!-- Wed: IGNORED conflict (quiet) -->
+      <div class="day">
+        <div class="cal-work-hours" style="top:48px;height:384px"></div>
+        <div class="cal-event cal-event--ignored half-l" style="top:72px;height:36px">Daily</div>
+        <div class="cal-event cal-event--ignored half-r" style="top:84px;height:60px">Review<br /><button class="conflict-badge conflict-badge--ignored" type="button" aria-label="Conflict ignored"><svg aria-hidden="true"><use href="#conflict-icon"/></svg><span class="badge-text">ignored</span></button></div>
+      </div>
+
+      <!-- Thu -->
+      <div class="day day--extra">
+        <div class="cal-work-hours" style="top:48px;height:384px"></div>
+        <div class="cal-event" style="top:240px;height:48px">Client call</div>
+        <div class="cal-event cal-event--time-block" style="top:336px;height:96px">Write report</div>
+      </div>
+
+      <!-- Fri: inside an unconflicted ZONE (no markers) -->
+      <div class="day">
+        <div class="cal-zone" style="top:48px;height:384px"><div class="zone-label">Work hours · conflicts off</div></div>
+        <div class="cal-event half-l" style="top:96px;height:96px">Lab</div>
+        <div class="cal-event half-r" style="top:144px;height:72px">Sprint demo</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="chip" style="background:var(--color-royal);color:var(--color-on-royal)">Time block</span>
+      <span class="chip" style="background:var(--color-coral);color:var(--color-on-coral)">Conflict</span>
+      <span class="chip" style="background:var(--color-work-hours);color:var(--color-light-blue)">Work hours</span>
+      <span class="chip" style="background:var(--color-purple);color:var(--color-on-purple)">UI &amp; settings</span>
+    </div>
+  </div>
+</body>
+</html>

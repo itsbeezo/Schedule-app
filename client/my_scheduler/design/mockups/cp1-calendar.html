@@ -21,6 +21,7 @@
     .day { border-left: 1px solid var(--color-border); background-image: linear-gradient(to bottom, var(--color-border) 1px, transparent 1px); background-size: 100% 48px; }
     .day .cal-work-hours, .day .cal-zone, .day .cal-event { position: absolute; left: 4px; right: 4px; }
     .day .cal-event { padding: 4px 8px; font-size: var(--text-sm); font-weight: 600; overflow: hidden; }
+    .day .cal-event.cal-event--time-block { padding-left: 10px; }
     .half-l { right: 50% !important; } .half-r { left: 50% !important; }
     .cal-event .conflict-badge { margin-top: 4px; display: inline-flex; }
     .conflict-badge svg { width: 14px; height: 14px; flex: none; }
@@ -73,7 +74,7 @@
       <!-- Wed: IGNORED conflict (quiet) -->
       <div class="day">
         <div class="cal-work-hours" style="top:48px;height:384px"></div>
-        <div class="cal-event cal-event--ignored half-l" style="top:72px;height:36px">Standup</div>
+        <div class="cal-event cal-event--ignored half-l" style="top:72px;height:36px">Daily</div>
         <div class="cal-event cal-event--ignored half-r" style="top:84px;height:60px">Review<br /><button class="conflict-badge conflict-badge--ignored" type="button" aria-label="Conflict ignored"><svg aria-hidden="true"><use href="#conflict-icon"/></svg><span class="badge-text">ignored</span></button></div>
       </div>
 
@@ -87,7 +88,7 @@
       <!-- Fri: inside an unconflicted ZONE (no markers) -->
       <div class="day">
         <div class="cal-zone" style="top:48px;height:384px"><div class="zone-label">Work hours · conflicts off</div></div>
-        <div class="cal-event half-l" style="top:96px;height:96px">Workshop</div>
+        <div class="cal-event half-l" style="top:96px;height:96px">Lab</div>
         <div class="cal-event half-r" style="top:144px;height:72px">Sprint demo</div>
       </div>
     </div>

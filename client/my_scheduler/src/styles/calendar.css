@@ -28,9 +28,10 @@
 .fc .fc-event-title { overflow-wrap: anywhere; }
 
 .cal-event { border-radius: var(--radius-event); background-color: var(--color-royal); color: var(--color-on-royal); }
-.cal-event--time-block { border-left: 4px solid var(--color-light-blue); }
+.cal-event--time-block { box-shadow: inset 4px 0 0 var(--color-light-blue); }
+.fc .fc-event.cal-event--time-block { padding-left: 10px; }
 .cal-event--conflict { outline: 2px solid var(--color-coral); outline-offset: -2px; }
-.cal-event--ignored { outline: 2px dashed var(--color-text); outline-offset: -2px; }
+.cal-event--ignored { background-color: var(--color-raised); color: var(--color-text); outline: 2px dashed var(--color-muted); outline-offset: -2px; }
 
 .cal-work-hours { background: var(--color-work-hours) !important; border: 0 !important; border-radius: var(--radius-event); }
 .cal-zone {

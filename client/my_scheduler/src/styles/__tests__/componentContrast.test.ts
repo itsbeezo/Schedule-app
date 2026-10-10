@@ -31,7 +31,9 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-purple', '--color-surface', UI, 'input focus border on field'],
   ['--color-light-blue', '--color-surface', UI, 'zone dashed border, time-block edge'],
   ['--color-light-blue', '--color-royal', UI, 'time-block edge against its event'],
-  ['--color-text', '--color-royal', UI, 'ignored conflict dashed outline'],
+  ['--color-text', '--color-raised', TEXT, '.cal-event--ignored text on its calm fill'],
+  ['--color-muted', '--color-raised', UI, 'ignored dashed outline on its own fill'],
+  ['--color-muted', '--color-surface', UI, 'ignored dashed outline against the grid'],
   ['--color-text', '--color-raised', UI, 'selected swatch ring'],
 ];
 

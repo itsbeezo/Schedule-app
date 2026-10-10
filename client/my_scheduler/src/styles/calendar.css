@@ -25,13 +25,37 @@
 .fc .fc-col-header-cell-cushion { color: var(--color-text); font-weight: 600; padding: var(--space-1); }
 .fc .fc-timegrid-slot { height: 2.5em; }
 .fc .fc-event { padding: 2px 6px; border-radius: var(--radius-event); }
-.fc .fc-event-title { overflow-wrap: anywhere; }
 
 .cal-event { border-radius: var(--radius-event); background-color: var(--color-royal); color: var(--color-on-royal); }
 .fc .fc-event.cal-event--time-block { box-shadow: inset 4px 0 0 var(--color-light-blue); padding-left: 10px; }
 .fc .fc-event-title { font-weight: 600; }
 .fc .fc-event-time { font-weight: 500; }
-.fc .fc-event:hover { filter: brightness(1.1); }
+.fc .fc-event:hover { box-shadow: 0 0 0 2px var(--color-light-blue); }
+.fc .fc-event.cal-event--time-block:hover { box-shadow: inset 4px 0 0 var(--color-light-blue), 0 0 0 2px var(--color-light-blue); }
+
+/* Titles break between words only, never mid-word */
+.fc .fc-event-title, .fc .fc-event-time { overflow-wrap: normal; word-break: keep-all; }
+.fc .fc-timegrid-event-short { padding-top: 0; padding-bottom: 0; }
+.fc .fc-timegrid-event-short .fc-event-main { line-height: 1.2; }
+.fc .fc-event { container-type: size; }
+/* Half-hour blocks: time and title on one row so the title is not clipped */
+@container (max-height: 40px) {
+  .fc .fc-event-main-frame { flex-direction: row; align-items: baseline; gap: 6px; overflow: hidden; }
+  .fc .fc-event-title-container { flex: 0 1 auto; min-width: 0; }
+  .fc .fc-event-time { white-space: nowrap; }
+}
+/* Narrow side-by-side blocks: smaller type, one clipped line for time and title */
+@container (max-width: 120px) {
+  .fc .fc-event-main { font-size: var(--text-sm); }
+  .fc .fc-event-time, .fc .fc-event-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* a 30-minute block next to another is too small for time plus title: keep the title, drop the time
+     (the time is in the edit dialog); the title ellipsizes inside the block */
+  .fc .fc-event-time { display: none; }
+  .fc .fc-event-main-frame, .fc .fc-event-title-container { min-width: 0; overflow: hidden; }
+}
+
+/* disabled 'today' (already on today): FullCalendar fades it to .65 opacity, which dropped its label below 4.5:1 */
+.fc .fc-button:disabled { opacity: 1; color: var(--color-muted); }
 .fc .fc-event.cal-event--conflict { outline: 2px solid var(--color-coral); outline-offset: -2px; }
 .fc .fc-event.cal-event--ignored {
   /* !important: FullCalendar writes a custom event color as an inline style, which beats any selector */
@@ -47,10 +71,18 @@
 }
 .fc .cal-zone .fc-event-title { color: var(--color-light-blue); font-size: var(--text-sm); font-weight: 600; }
 
+@property --edge { syntax: '<length>'; inherits: false; initial-value: 40px; }
+@keyframes edge-fade { from { --edge: 40px; } 85% { --edge: 40px; } to { --edge: 0px; } }
+
 @media (max-width: 600px) {
   .fc .fc-toolbar { flex-wrap: wrap; gap: var(--space-1); }
   .fc .fc-toolbar-title { font-size: var(--text-lg); }
-  .fc .fc-view-harness { overflow-x: auto; }
+  .fc .fc-view-harness {
+    overflow-x: auto;
+    /* right-edge fade says "scroll"; it shrinks to nothing as the grid reaches its end */
+    -webkit-mask-image: linear-gradient(to right, var(--color-bg) calc(100% - var(--edge)), transparent);
+    mask-image: linear-gradient(to right, var(--color-bg) calc(100% - var(--edge)), transparent);
+    animation: edge-fade linear both; animation-timeline: scroll(self inline);
+  }
   .fc .fc-scrollgrid { min-width: 640px; }
-  .fc .fc-event-title { overflow-wrap: break-word; }
 }

@@ -27,6 +27,9 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-mint', '--color-surface', UI, 'focus ring on surfaces'],
   ['--color-mint', '--color-raised', UI, 'focus ring in dialogs'],
   ['--color-mint', '--color-bg', UI, 'event keyboard-focus ring (outside the page-colored gap)'],
+  ['--color-mint', '--color-royal', UI, 'focus ring even if it touched a default event'],
+  ['--color-bg', '--color-purple', UI, 'page-colored focus gap and overlap separator against a purple event'],
+  ['--color-bg', '--color-royal', UI, 'page-colored focus gap and overlap separator against a default event'],
   ['--color-coral', '--color-surface', UI, 'conflict outline against the grid'],
   // coral against the royal fill is only 2.1:1; the outline's outer edge meets the grid (checked above) and the
   // conflict is never signalled by color alone (badge with icon and text), so this pairing is intentionally not asserted.

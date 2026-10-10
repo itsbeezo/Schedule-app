@@ -27,7 +27,14 @@
 .fc .fc-event { padding: 2px 6px; border-radius: var(--radius-event); }
 
 .cal-event { border-radius: var(--radius-event); background-color: var(--color-royal); color: var(--color-on-royal); }
-.fc .fc-event.cal-event--time-block { box-shadow: inset 4px 0 0 var(--color-light-blue); padding-left: 10px; }
+.fc .fc-event.cal-event--time-block { box-shadow: inset 4px 0 0 var(--color-light-blue), 0 0 0 2px var(--color-bg); padding-left: 10px; }
+/* Overlapping blocks of the same color would merge into one shape: a page-colored 2px separator around each
+   time-grid block. (Hover/focus rules below replace this shadow with their own ring.) */
+.fc .fc-timegrid-event { box-shadow: 0 0 0 2px var(--color-bg); }
+/* Icon-only badges are ~20px: a transparent hit area grows the tap target to ~32px without growing the visual
+   badge. It lives inside the badge's own event, so it cannot steal clicks from neighbouring events. */
+.fc .conflict-badge { position: relative; }
+.fc .conflict-badge::after { content: ''; position: absolute; inset: -6px; }
 .fc .fc-event-title { font-weight: 600; }
 .fc .fc-event-time { font-weight: 500; }
 .fc .fc-event:hover { box-shadow: 0 0 0 2px var(--color-light-blue); }

@@ -1,0 +1,47 @@
+:root {
+  --color-bg: #14102A;
+  --color-surface: #1E1840;
+  --color-raised: #2A2258;
+  --color-purple: #9B6BFF;
+  --color-royal: #4A63F0;
+  --color-light-blue: #A8D4FF;
+  --color-mint: #4DF5C0;
+  --color-coral: #FF8A5B;
+  --color-text: #EFEAFF;
+  --color-muted: #9D95C9;
+
+  --color-on-royal: #FFFFFF;
+  --color-on-purple: #14102A;
+  --color-on-mint: #06241A;
+  --color-on-coral: #2A0D05;
+
+  --color-border: rgba(239, 234, 255, 0.12);
+  --color-hover: rgba(239, 234, 255, 0.08);
+  --color-purple-soft: rgba(155, 107, 255, 0.18);
+  --color-work-hours: rgba(168, 212, 255, 0.14);
+  --color-zone-bg: rgba(168, 212, 255, 0.08);
+  --color-overlay: rgba(10, 7, 24, 0.72);
+
+  --radius-card: 14px;
+  --radius-event: 12px;
+  --radius-input: 12px;
+  --radius-pill: 999px;
+
+  --space-half: 4px;
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --text-sm: 12px;
+  --text-md: 14px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+
+  --motion-fast: 120ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --focus-ring: 0 0 0 3px rgba(77, 245, 192, 0.55);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.4);
+}

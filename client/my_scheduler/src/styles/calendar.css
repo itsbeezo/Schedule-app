@@ -33,6 +33,13 @@
 .fc .fc-event:hover { box-shadow: 0 0 0 2px var(--color-light-blue); }
 .fc .fc-event.cal-event--time-block:hover { box-shadow: inset 4px 0 0 var(--color-light-blue), 0 0 0 2px var(--color-light-blue); }
 
+/* Keyboard focus: FullCalendar focuses the event element itself and darkens it with an ::after overlay. Replace
+   the overlay with a ring (page-colored gap + mint) so the event keeps its colors; ring is mint, >= 3:1 vs the page. */
+.fc .fc-event:focus::after { display: none; }
+.fc .fc-event:focus-visible { box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 5px var(--color-mint); z-index: 5; }
+.fc .fc-event.cal-event--time-block:focus-visible {
+  box-shadow: inset 4px 0 0 var(--color-light-blue), 0 0 0 2px var(--color-bg), 0 0 0 5px var(--color-mint);
+}
 /* Titles break between words only, never mid-word */
 .fc .fc-event-title, .fc .fc-event-time { overflow-wrap: normal; word-break: keep-all; }
 .fc .fc-timegrid-event-short { padding-top: 0; padding-bottom: 0; }
@@ -40,7 +47,8 @@
 .fc .fc-timegrid-event { container-type: size; }
 /* Half-hour blocks: time and title on one row so the title is not clipped */
 @container (max-height: 40px) {
-  .fc .fc-event-main-frame { flex-direction: row; align-items: baseline; gap: 6px; overflow: hidden; }
+  .fc .fc-event-main-frame, .fc .fc-event-main > div { display: flex; flex-direction: row; align-items: center; gap: 6px; overflow: hidden; }
+  .fc .fc-event-main > div > .conflict-badge { flex: none; }
   .fc .fc-event-title-container { flex: 0 1 auto; min-width: 0; }
   .fc .fc-event-time { white-space: nowrap; }
 }
@@ -51,8 +59,12 @@
   /* a 30-minute block next to another is too small for time plus title: keep the title, drop the time
      (the time is in the edit dialog); the title ellipsizes inside the block */
   .fc .fc-event-time { display: none; }
-  .fc .fc-event-main-frame, .fc .fc-event-title-container { min-width: 0; overflow: hidden; }
+  .fc .fc-event-main-frame, .fc .fc-event-title-container, .fc .fc-event-main > div { min-width: 0; overflow: hidden; }
 }
+/* Compact conflict badge: clock and "!" icon only. The label stays in the DOM (aria-label has the full text);
+   font-size 0 hides the bare text node without touching the component. */
+@container (max-height: 40px) { .fc .conflict-badge { font-size: 0; gap: 0; padding: 2px 4px; } }
+@container (max-width: 120px) { .fc .conflict-badge { font-size: 0; gap: 0; padding: 2px 4px; } }
 
 /* disabled 'today' (already on today): FullCalendar fades it to .65 opacity, which dropped its label below 4.5:1 */
 .fc .fc-button:disabled { opacity: 1; color: var(--color-muted); }
@@ -86,4 +98,12 @@
     animation: edge-fade linear both; animation-timeline: scroll(self inline);
   }
   .fc .fc-timeGridWeek-view .fc-scrollgrid { min-width: 640px; }
+}
+
+/* Month chips on phones: title only, ellipsized (the time pushed the title out of a ~50px cell) */
+@media (max-width: 600px) {
+  .fc .fc-daygrid-event .fc-event-time { display: none; }
+  .fc .fc-daygrid-event .fc-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fc .fc-daygrid-event, .fc .fc-daygrid-event > div { min-width: 0; overflow: hidden; }
+  .fc .fc-daygrid-event .conflict-badge { font-size: 0; gap: 0; padding: 2px 3px; flex: none; }
 }

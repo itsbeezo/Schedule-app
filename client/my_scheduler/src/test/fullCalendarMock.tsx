@@ -23,7 +23,9 @@ export default function FullCalendarMock(props: MockCalendarProps) {
   }, []);
   const visible = (props.events ?? []).filter((e) => e.display !== 'background');
   return (
-    <div data-testid="calendar" data-scroll-time={props.scrollTime as string | undefined}
+    <div data-testid="calendar" data-initial-view={props.initialView as string | undefined}
+      data-toolbar-right={(props.headerToolbar as Info | undefined)?.right}
+      data-scroll-time={props.scrollTime as string | undefined}
       data-slot-min-time={props.slotMinTime as string | undefined}
       data-slot-max-time={props.slotMaxTime as string | undefined}>
       <div data-testid="bands">{(props.events ?? []).filter((e) => e.display === 'background').length}</div>

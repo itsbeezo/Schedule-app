@@ -31,7 +31,23 @@ export const CALENDAR_OPTIONS: CalendarOptions = {
   eventLongPressDelay: 400,
   selectLongPressDelay: 400,
   height: 'max(480px, calc(100vh - 12rem))',
+  views: { timeGrid3Day: { type: 'timeGrid', duration: { days: 3 }, buttonText: '3 day' } },
 };
+
+export const NARROW_QUERY = '(max-width: 600px)';
+const WIDE_TOOLBAR_RIGHT = 'timeGridDay,timeGridWeek,dayGridMonth';
+const NARROW_TOOLBAR_RIGHT = 'timeGridDay,timeGrid3Day,timeGridWeek,dayGridMonth';
+
+export function isNarrowViewport(
+  mm: ((q: string) => { matches: boolean }) | undefined = typeof window !== 'undefined' ? window.matchMedia?.bind(window) : undefined
+): boolean {
+  try {
+    return !!mm?.(NARROW_QUERY).matches;
+  } catch {
+    return false;
+  }
+}
+
 
 export function toFullCalendarEvent(e: ApiEvent) {
   return {
@@ -47,6 +63,7 @@ export function toFullCalendarEvent(e: ApiEvent) {
 
 export default function CalendarView() {
   const data = useCalendarData();
+  const [narrow] = useState(() => isNarrowViewport());
   const { showError } = useToast();
   const [draft, setDraft] = useState<{ mode: 'create' | 'edit'; value: EventDraft } | null>(null);
   const [selection, setSelection] = useState<{ start: Date; end: Date } | null>(null);
@@ -105,6 +122,8 @@ export default function CalendarView() {
       )}
       <FullCalendar
         {...CALENDAR_OPTIONS}
+        initialView={narrow ? 'timeGrid3Day' : 'timeGridWeek'}
+        headerToolbar={{ ...(CALENDAR_OPTIONS.headerToolbar as object), right: narrow ? NARROW_TOOLBAR_RIGHT : WIDE_TOOLBAR_RIGHT }}
         scrollTime={getScrollTime()}
         events={calendarEvents}
         datesSet={(arg) => data.setRange({ from: arg.start, to: arg.end })}

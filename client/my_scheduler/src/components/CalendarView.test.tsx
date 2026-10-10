@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CalendarView, { CALENDAR_OPTIONS, toFullCalendarEvent } from './CalendarView';
+import CalendarView, { CALENDAR_OPTIONS, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
 
@@ -158,4 +158,50 @@ test('no slotMinTime/slotMaxTime reaches FullCalendar', async () => {
   await screen.findByText('Planning');
   expect(screen.getByTestId('calendar')).not.toHaveAttribute('data-slot-min-time');
   expect(screen.getByTestId('calendar')).not.toHaveAttribute('data-slot-max-time');
+});
+
+describe('narrow (phone) default view', () => {
+  const mm = (matches: boolean) => jest.fn().mockReturnValue({ matches });
+  afterEach(() => { delete (window as any).matchMedia; });
+
+  test('isNarrowViewport reads the media query and falls back to false without matchMedia', () => {
+    const fn = mm(true);
+    expect(isNarrowViewport(fn as any)).toBe(true);
+    expect(fn).toHaveBeenCalledWith(NARROW_QUERY);
+    expect(NARROW_QUERY).toBe('(max-width: 600px)');
+    expect(isNarrowViewport(mm(false) as any)).toBe(false);
+    expect(isNarrowViewport(undefined)).toBe(false);
+    expect(isNarrowViewport((() => { throw new Error('x'); }) as any)).toBe(false);
+  });
+
+  test('narrow starts on the 3-day view with a toolbar offering 3 day, Day and Month', async () => {
+    (window as any).matchMedia = mm(true);
+    renderView();
+    const cal = await screen.findByTestId('calendar');
+    expect(cal).toHaveAttribute('data-initial-view', 'timeGrid3Day');
+    expect(cal).toHaveAttribute('data-toolbar-right', 'timeGridDay,timeGrid3Day,timeGridWeek,dayGridMonth');
+  });
+
+  test('wide (or no matchMedia) starts on the week with the unchanged toolbar', async () => {
+    (window as any).matchMedia = mm(false);
+    const { unmount } = renderView();
+    let cal = await screen.findByTestId('calendar');
+    expect(cal).toHaveAttribute('data-initial-view', 'timeGridWeek');
+    expect(cal).toHaveAttribute('data-toolbar-right', 'timeGridDay,timeGridWeek,dayGridMonth');
+    unmount();
+    delete (window as any).matchMedia;
+    renderView();
+    cal = await screen.findByTestId('calendar');
+    expect(cal).toHaveAttribute('data-initial-view', 'timeGridWeek');
+  });
+
+  test('the 3-day view is a 3-day time grid that inherits snapping, height and scroll settings', () => {
+    const v = (CALENDAR_OPTIONS.views as any).timeGrid3Day;
+    expect(v).toMatchObject({ type: 'timeGrid', duration: { days: 3 }, buttonText: '3 day' });
+    for (const k of ['snapDuration', 'scrollTime', 'scrollTimeReset', 'height', 'editable', 'selectable', 'slotDuration']) {
+      expect(v).not.toHaveProperty(k);
+    }
+    expect(CALENDAR_OPTIONS.snapDuration).toBe('00:15:00');
+    expect(CALENDAR_OPTIONS.height).toMatch(/100vh/);
+  });
 });

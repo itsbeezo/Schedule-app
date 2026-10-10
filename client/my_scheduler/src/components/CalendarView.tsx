@@ -6,7 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import type { CalendarOptions } from '@fullcalendar/core';
 import { ApiEvent, EventInput } from '../api/types';
 import * as api from '../api/client';
-import { getDefaultEventColor } from '../lib/preferences';
+import { getDefaultEventColor, getScrollTime } from '../lib/preferences';
 import EventDialog, { EventDraft } from './EventDialog';
 import SelectionToolbar from './SelectionToolbar';
 import { useToast } from './Toast';
@@ -105,6 +105,7 @@ export default function CalendarView() {
       )}
       <FullCalendar
         {...CALENDAR_OPTIONS}
+        scrollTime={getScrollTime()}
         events={calendarEvents}
         datesSet={(arg) => data.setRange({ from: arg.start, to: arg.end })}
         select={(arg) => setSelection({ start: arg.start, end: arg.end })}

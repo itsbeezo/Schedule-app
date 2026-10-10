@@ -68,14 +68,17 @@ test("'allow' stays ignored after the overlap changes", async () => {
 
 test('a weekly zone uses the stored user timezone', async () => {
   await ownerPool.query(`UPDATE users SET timezone = 'America/New_York' WHERE id = $1`, [USER_A]);
-  // Zone: Mondays 09:00-17:00 New York, created in winter (EST).
-  await request(appA).post('/api/conflict-zones').send({
-    start_at: '2026-03-02T14:00:00Z', end_at: '2026-03-02T22:00:00Z', repeats_weekly: true,
-  });
-  await mk(appA, 'A', '2026-03-09T13:15:00Z', '2026-03-09T14:00:00Z');
-  await mk(appA, 'B', '2026-03-09T13:00:00Z', '2026-03-09T13:45:00Z');
-  expect((await request(appA).get('/api/conflicts')).body).toEqual({ active: [], ignored: [] });
-  await ownerPool.query(`UPDATE users SET timezone = 'UTC' WHERE id = $1`, [USER_A]);
+  try {
+    // Zone: Mondays 09:00-17:00 New York, created in winter (EST).
+    await request(appA).post('/api/conflict-zones').send({
+      start_at: '2026-03-02T14:00:00Z', end_at: '2026-03-02T22:00:00Z', repeats_weekly: true,
+    });
+    await mk(appA, 'A', '2026-03-09T13:15:00Z', '2026-03-09T14:00:00Z');
+    await mk(appA, 'B', '2026-03-09T13:00:00Z', '2026-03-09T13:45:00Z');
+    expect((await request(appA).get('/api/conflicts')).body).toEqual({ active: [], ignored: [] });
+  } finally {
+    await ownerPool.query(`UPDATE users SET timezone = 'UTC' WHERE id = $1`, [USER_A]);
+  }
 });
 
 test('the from/to window limits which events are considered', async () => {

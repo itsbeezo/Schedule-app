@@ -13,6 +13,9 @@ import { useToast } from './Toast';
 import { persistEventChange } from '../lib/eventChange';
 
 import { useCalendarData } from '../hooks/useCalendarData';
+import ConflictBadge from './ConflictBadge';
+import ConflictPopover from './ConflictPopover';
+import { ConflictInfo, eventConflictState, indexConflicts } from '../lib/conflictIndex';
 import { workHoursToBackground } from '../lib/workHoursBand';
 import { readableTextOn } from '../styles/contrast';
 
@@ -25,6 +28,7 @@ export const CALENDAR_OPTIONS: CalendarOptions = {
   snapDuration: '00:15:00',
   nowIndicator: true,
   editable: true,
+  eventInteractive: true,
   selectable: true,
   selectMirror: true,
   longPressDelay: 400,
@@ -49,6 +53,15 @@ export function isNarrowViewport(
 }
 
 
+const TIME_FMT: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
+
+/** "Title, 9:00 AM\u201310:30 AM": the full text for event blocks too narrow to show it. */
+export function describeEvent(title: string, start: Date | null, end: Date | null): string {
+  if (!start) return title;
+  const from = start.toLocaleTimeString([], TIME_FMT);
+  return end ? `${title}, ${from}\u2013${end.toLocaleTimeString([], TIME_FMT)}` : `${title}, ${from}`;
+}
+
 export function toFullCalendarEvent(e: ApiEvent) {
   return {
     id: e.id,
@@ -68,12 +81,43 @@ export default function CalendarView() {
   const [draft, setDraft] = useState<{ mode: 'create' | 'edit'; value: EventDraft } | null>(null);
   const [selection, setSelection] = useState<{ start: Date; end: Date } | null>(null);
 
+  const [popover, setPopover] = useState<{ x: number; y: number; eventId: string; info: ConflictInfo } | null>(null);
+  const conflictIndex = useMemo(() => indexConflicts(data.conflicts), [data.conflicts]);
+  const titleOf = (id: string) => data.events.find((e) => e.id === id)?.title ?? 'another event';
+
+  async function chooseIgnore(info: ConflictInfo, mode: 'once' | 'allow') {
+    try {
+      await api.createIgnore({ eventAId: info.eventAId, eventBId: info.eventBId, mode });
+      setPopover(null);
+      await data.reload();
+    } catch (err) {
+      setPopover(null);
+      showError(err instanceof Error ? err.message : 'Could not save that choice.');
+    }
+  }
+
+  async function restore(info: ConflictInfo) {
+    try {
+      if (info.ignoreId) await api.deleteIgnore(info.ignoreId);
+      setPopover(null);
+      await data.reload();
+    } catch (err) {
+      setPopover(null);
+      showError(err instanceof Error ? err.message : 'Could not restore that conflict.');
+    }
+  }
+
   const calendarEvents = useMemo(
     () => [
-      ...data.events.map(toFullCalendarEvent),
+      ...data.events.map((e) => {
+        const fc = toFullCalendarEvent(e);
+        const state = eventConflictState(conflictIndex.get(e.id));
+        const extra = state === 'active' ? ['cal-event--conflict'] : state === 'ignored' ? ['cal-event--ignored'] : [];
+        return { ...fc, classNames: [...fc.classNames, ...extra] };
+      }),
       ...(data.range ? workHoursToBackground(data.workHours, data.range.from, data.range.to) : []),
     ],
-    [data.events, data.workHours, data.range]
+    [data.events, data.workHours, data.range, conflictIndex]
   );
 
   function newDraft(start: Date, end: Date): EventDraft {
@@ -130,7 +174,31 @@ export default function CalendarView() {
         select={(arg) => setSelection({ start: arg.start, end: arg.end })}
         eventDrop={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventResize={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
+        eventDidMount={(arg) => {
+          arg.el.title = describeEvent(arg.event.title, arg.event.start, arg.event.end);
+        }}
+        eventContent={(arg) => {
+          const infos = conflictIndex.get(arg.event.id);
+          const state = eventConflictState(infos);
+          const info = infos?.find((i) => i.state === state);
+          return (
+            <div>
+              {arg.timeText && <div className="fc-event-time">{arg.timeText}</div>}
+              <div className="fc-event-title">{arg.event.title}</div>
+              {state && info && (
+                <ConflictBadge
+                  state={state}
+                  mode={info.mode}
+                  otherTitle={titleOf(info.otherId)}
+                  onOpen={(rect) => setPopover({ x: rect.left, y: rect.bottom, eventId: arg.event.id, info })}
+                />
+              )}
+            </div>
+          );
+        }}
         eventClick={(arg) => {
+          const target = arg.jsEvent?.target as HTMLElement | null | undefined;
+          if (target?.closest?.('.conflict-badge')) return;
           const e = data.events.find((x) => x.id === arg.event.id);
           if (!e) return;
           setDraft({
@@ -147,6 +215,19 @@ export default function CalendarView() {
             setSelection(null);
           }}
           onCancel={() => setSelection(null)}
+        />
+      )}
+      {popover && (
+        <ConflictPopover
+          x={popover.x}
+          y={popover.y}
+          otherTitle={titleOf(popover.info.otherId)}
+          state={popover.info.state}
+          mode={popover.info.mode}
+          onIgnoreOnce={() => void chooseIgnore(popover.info, 'once')}
+          onAllow={() => void chooseIgnore(popover.info, 'allow')}
+          onRestore={() => void restore(popover.info)}
+          onClose={() => setPopover(null)}
         />
       )}
       {draft && (

@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CalendarView, { CALENDAR_OPTIONS, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
+import CalendarView, { CALENDAR_OPTIONS, describeEvent, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
 
@@ -19,6 +19,8 @@ beforeEach(() => {
   mocked.listWorkHours.mockResolvedValue([{ weekday: 1, start_time: '09:00', end_time: '17:00' }]);
   mocked.listZones.mockResolvedValue([]);
   mocked.getConflicts.mockResolvedValue({ active: [], ignored: [] });
+  mocked.createIgnore.mockResolvedValue(undefined);
+  mocked.deleteIgnore.mockResolvedValue(undefined);
 });
 
 const renderView = () => render(<ToastProvider><CalendarView /></ToastProvider>);
@@ -203,5 +205,97 @@ describe('narrow (phone) default view', () => {
     }
     expect(CALENDAR_OPTIONS.snapDuration).toBe('00:15:00');
     expect(CALENDAR_OPTIONS.height).toMatch(/100vh/);
+  });
+});
+
+const ev2 = () => ev({ id: 'e2', title: 'Dentist', start_at: '2026-10-06T10:30:00.000Z', end_at: '2026-10-06T11:30:00.000Z' });
+const activeConflict = { eventAId: 'e1', eventBId: 'e2', overlapStart: '2026-10-06T10:30:00.000Z', overlapEnd: '2026-10-06T11:00:00.000Z' };
+
+describe('conflict states', () => {
+  test('an active conflict marks both events and shows a Conflict badge on each', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    expect(screen.getByTestId('event-e1')).toHaveClass('cal-event--conflict');
+    expect(screen.getByTestId('event-e2')).toHaveClass('cal-event--conflict');
+    expect(screen.getAllByRole('button', { name: /^conflict: overlaps with/i })).toHaveLength(2);
+  });
+
+  test('"Ignore this once" saves a once-ignore for the pair and refreshes conflicts', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByRole('button', { name: /conflict: overlaps with dentist/i }));
+    expect(screen.getByText(/overlaps with dentist/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /ignore this once/i }));
+    await waitFor(() => expect(mocked.createIgnore).toHaveBeenCalledWith({ eventAId: 'e1', eventBId: 'e2', mode: 'once' }));
+    await waitFor(() => expect(mocked.getConflicts).toHaveBeenCalledTimes(2));
+  });
+
+  test('"Allow overlap" saves an allow-ignore', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByRole('button', { name: /conflict: overlaps with dentist/i }));
+    await userEvent.click(screen.getByRole('button', { name: /allow overlap/i }));
+    await waitFor(() => expect(mocked.createIgnore).toHaveBeenCalledWith({ eventAId: 'e1', eventBId: 'e2', mode: 'allow' }));
+  });
+
+  test('an ignored conflict is shown quietly and can be restored', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [], ignored: [{ ...activeConflict, mode: 'allow', ignoreId: 'ign1' }] });
+    renderView();
+    await screen.findByText('Planning');
+    expect(screen.getByTestId('event-e1')).toHaveClass('cal-event--ignored');
+    expect(screen.getByTestId('event-e1')).not.toHaveClass('cal-event--conflict');
+    await userEvent.click(screen.getAllByRole('button', { name: /^allowed: overlaps with/i })[0]);
+    await userEvent.click(screen.getByRole('button', { name: /restore conflict/i }));
+    await waitFor(() => expect(mocked.deleteIgnore).toHaveBeenCalledWith('ign1'));
+  });
+
+  test('a failed ignore shows a toast', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    mocked.createIgnore.mockRejectedValue(new Error('Those events do not overlap'));
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0]);
+    await userEvent.click(screen.getByRole('button', { name: /allow overlap/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Those events do not overlap');
+  });
+
+  test('clicking a badge does not open the edit dialog, and Escape closes the popover', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0]);
+    expect(screen.getByRole('dialog', { name: /conflict options/i })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe('readable event labels for narrow blocks', () => {
+  test('describeEvent gives "Title, start-end"', () => {
+    const s = new Date(2026, 9, 6, 9, 0);
+    const e = new Date(2026, 9, 6, 10, 30);
+    const text = describeEvent('Dentist', s, e);
+    expect(text.startsWith('Dentist, ')).toBe(true);
+    expect(text).toContain('\u2013');
+    expect(text).toMatch(/9:00/);
+    expect(text).toMatch(/10:30/);
+  });
+
+  test('the calendar makes events focusable and sets a title on each event element', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    renderView();
+    await screen.findByText('Planning');
+    expect(CALENDAR_OPTIONS.eventInteractive).toBe(true);
+    expect(screen.getByTestId('event-e2')).toHaveAttribute('title', expect.stringMatching(/^Dentist, .+\u2013.+/));
+    expect(screen.getByTestId('event-e1')).toHaveAttribute('title', expect.stringMatching(/^Planning, /));
   });
 });

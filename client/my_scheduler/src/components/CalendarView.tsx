@@ -10,6 +10,7 @@ import { getDefaultEventColor } from '../lib/preferences';
 import EventDialog, { EventDraft } from './EventDialog';
 import SelectionToolbar from './SelectionToolbar';
 import { useToast } from './Toast';
+import { persistEventChange } from '../lib/eventChange';
 
 import { useCalendarData } from '../hooks/useCalendarData';
 import { workHoursToBackground } from '../lib/workHoursBand';
@@ -107,6 +108,8 @@ export default function CalendarView() {
         events={calendarEvents}
         datesSet={(arg) => data.setRange({ from: arg.start, to: arg.end })}
         select={(arg) => setSelection({ start: arg.start, end: arg.end })}
+        eventDrop={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
+        eventResize={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventClick={(arg) => {
           const e = data.events.find((x) => x.id === arg.event.id);
           if (!e) return;

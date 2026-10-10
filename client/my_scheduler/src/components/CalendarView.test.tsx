@@ -102,3 +102,29 @@ test('deleting an event calls the API and closes the dialog', async () => {
   await waitFor(() => expect(mocked.deleteEvent).toHaveBeenCalledWith('e1'));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 });
+
+test('dropping an event saves its new times and refreshes conflicts', async () => {
+  mocked.updateEvent.mockResolvedValue(ev());
+  renderView();
+  await screen.findByText('Planning');
+  await userEvent.click(screen.getByRole('button', { name: /drag planning/i }));
+  await waitFor(() =>
+    expect(mocked.updateEvent).toHaveBeenCalledWith('e1', {
+      start_at: '2026-10-06T11:00:00.000Z',
+      end_at: '2026-10-06T12:00:00.000Z',
+    })
+  );
+  await waitFor(() => expect(mocked.getConflicts).toHaveBeenCalledTimes(2));
+});
+
+test('a failed drop reverts the event and shows a toast', async () => {
+  const revert = jest.fn();
+  (window as any).__revert = revert;
+  mocked.updateEvent.mockRejectedValue(new Error('Could not save that move'));
+  renderView();
+  await screen.findByText('Planning');
+  await userEvent.click(screen.getByRole('button', { name: /drag planning/i }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not save that move');
+  expect(revert).toHaveBeenCalled();
+  delete (window as any).__revert;
+});

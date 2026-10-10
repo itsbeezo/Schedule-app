@@ -33,7 +33,9 @@ export default function FullCalendarMock(props: MockCalendarProps) {
       {visible.map((e) => {
         const info = { event: { id: e.id, title: e.title, display: e.display, start: new Date(e.start), end: new Date(e.end), extendedProps: e.extendedProps ?? {} } };
         return (
-          <div key={e.id} ref={(el) => { if (el) props.eventDidMount?.({ event: info.event, el }); }} data-testid={`event-${e.id}`} className={(e.classNames ?? []).join(' ')}>
+          <div key={e.id} ref={(el) => { if (el) props.eventDidMount?.({ event: info.event, el }); }} data-testid={`event-${e.id}`} tabIndex={0}
+            onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { props.eventClick?.({ ...info, jsEvent: ev.nativeEvent }); ev.preventDefault(); } }}
+            className={(e.classNames ?? []).join(' ')}>
             {props.eventContent ? props.eventContent(info) : e.title}
             <button onClick={() => props.eventClick?.(info)}>open {e.title}</button>
             <button

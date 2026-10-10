@@ -279,6 +279,48 @@ describe('conflict states', () => {
   });
 });
 
+describe('conflict popover keyboard and focus', () => {
+  async function setup() {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    return screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0];
+  }
+
+  test.each([['Enter', '{Enter}'], ['Space', ' ']])('%s on the focused badge opens the popover, not the edit dialog', async (_n, key) => {
+    const badge = await setup();
+    badge.focus();
+    await userEvent.keyboard(key);
+    expect(screen.getByRole('dialog', { name: /conflict options/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^title/i)).toBeNull();
+  });
+
+  test('Enter on the event itself still opens the edit dialog', async () => {
+    await setup();
+    screen.getByTestId('event-e1').focus();
+    await userEvent.keyboard('{Enter}');
+    expect(await screen.findByLabelText(/^title/i)).toBeInTheDocument();
+  });
+
+  test('focus moves to the first button on open, Tab stays inside, Escape restores focus to the badge', async () => {
+    const badge = await setup();
+    await userEvent.click(badge);
+    const first = screen.getByRole('button', { name: /ignore this once/i });
+    const last = screen.getByRole('button', { name: /allow overlap/i });
+    expect(first).toHaveFocus();
+    await userEvent.tab();
+    expect(last).toHaveFocus();
+    await userEvent.tab();
+    expect(first).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(last).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(badge).toHaveFocus();
+  });
+});
+
 describe('readable event labels for narrow blocks', () => {
   test('describeEvent gives "Title, start-end"', () => {
     const s = new Date(2026, 9, 6, 9, 0);

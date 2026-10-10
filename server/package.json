@@ -4,7 +4,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node src/index.ts",
-    "start": "node dist/index.js"
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "test": "jest --runInBand",
+    "migrate": "ts-node src/migrate-cli.ts",
+    "seed:demo": "ts-node scripts/seed-demo.ts"
   },
   "keywords": [],
   "author": "",

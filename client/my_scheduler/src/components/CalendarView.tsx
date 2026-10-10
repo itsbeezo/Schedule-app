@@ -1,10 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { CalendarOptions } from '@fullcalendar/core';
-import { ApiEvent } from '../api/types';
+import { ApiEvent, EventInput } from '../api/types';
+import * as api from '../api/client';
+import { getDefaultEventColor } from '../lib/preferences';
+import EventDialog, { EventDraft } from './EventDialog';
+import SelectionToolbar from './SelectionToolbar';
+import { useToast } from './Toast';
+import { persistEventChange } from '../lib/eventChange';
+
 import { useCalendarData } from '../hooks/useCalendarData';
 import { workHoursToBackground } from '../lib/workHoursBand';
 import { readableTextOn } from '../styles/contrast';
@@ -40,6 +47,9 @@ export function toFullCalendarEvent(e: ApiEvent) {
 
 export default function CalendarView() {
   const data = useCalendarData();
+  const { showError } = useToast();
+  const [draft, setDraft] = useState<{ mode: 'create' | 'edit'; value: EventDraft } | null>(null);
+  const [selection, setSelection] = useState<{ start: Date; end: Date } | null>(null);
 
   const calendarEvents = useMemo(
     () => [
@@ -49,10 +59,41 @@ export default function CalendarView() {
     [data.events, data.workHours, data.range]
   );
 
+  function newDraft(start: Date, end: Date): EventDraft {
+    return { title: '', start, end, kind: 'event', color: getDefaultEventColor(), notes: null };
+  }
+
+  function openNewEvent() {
+    const start = new Date();
+    start.setMinutes(0, 0, 0);
+    start.setHours(start.getHours() + 1);
+    setDraft({ mode: 'create', value: newDraft(start, new Date(start.getTime() + 3600000)) });
+  }
+
+  async function save(input: EventInput, id?: string) {
+    if (id) await api.updateEvent(id, input);
+    else await api.createEvent(input);
+    setDraft(null);
+    await data.reload();
+  }
+
+  async function remove(id: string) {
+    try {
+      await api.deleteEvent(id);
+      setDraft(null);
+      await data.reload();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Could not delete the event.');
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <h1 className="app-title">Schedule</h1>
+        <button className="btn btn--primary" type="button" onClick={openNewEvent}>
+          Add event
+        </button>
       </header>
       {data.loadError && (
         <div className="load-error" role="alert">
@@ -66,7 +107,37 @@ export default function CalendarView() {
         {...CALENDAR_OPTIONS}
         events={calendarEvents}
         datesSet={(arg) => data.setRange({ from: arg.start, to: arg.end })}
+        select={(arg) => setSelection({ start: arg.start, end: arg.end })}
+        eventDrop={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
+        eventResize={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
+        eventClick={(arg) => {
+          const e = data.events.find((x) => x.id === arg.event.id);
+          if (!e) return;
+          setDraft({
+            mode: 'edit',
+            value: { id: e.id, title: e.title, start: new Date(e.start_at), end: new Date(e.end_at), kind: e.kind, color: e.color, notes: e.notes },
+          });
+        }}
       />
+      {selection && (
+        <SelectionToolbar
+          range={selection}
+          onAddEvent={() => {
+            setDraft({ mode: 'create', value: newDraft(selection.start, selection.end) });
+            setSelection(null);
+          }}
+          onCancel={() => setSelection(null)}
+        />
+      )}
+      {draft && (
+        <EventDialog
+          mode={draft.mode}
+          initial={draft.value}
+          onSave={save}
+          onDelete={remove}
+          onClose={() => setDraft(null)}
+        />
+      )}
     </div>
   );
 }

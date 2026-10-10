@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle } from 'react';
 
 type Info = Record<string, any>;
 
@@ -16,7 +16,11 @@ export interface MockCalendarProps {
 
 export const MOCK_RANGE = { start: new Date(2026, 9, 5), end: new Date(2026, 9, 12) };
 
-export default function FullCalendarMock(props: MockCalendarProps) {
+export const scrollToTimeCalls: string[] = [];
+
+const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawProps, ref) {
+  const props: MockCalendarProps = rawProps;
+  useImperativeHandle(ref, () => ({ getApi: () => ({ scrollToTime: (t: string) => { scrollToTimeCalls.push(t); } }) }));
   const { datesSet } = props;
   useEffect(() => {
     datesSet?.(MOCK_RANGE);
@@ -57,4 +61,6 @@ export default function FullCalendarMock(props: MockCalendarProps) {
       </button>
     </div>
   );
-}
+});
+
+export default FullCalendarMock;

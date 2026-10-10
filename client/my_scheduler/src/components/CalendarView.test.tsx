@@ -1,8 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CalendarView, { CALENDAR_OPTIONS, describeEvent, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
+import { scrollToTimeCalls } from '../test/fullCalendarMock';
 
 jest.mock('@fullcalendar/react', () => ({ __esModule: true, default: require('../test/fullCalendarMock').default }));
 jest.mock('../api/client');
@@ -21,6 +22,8 @@ beforeEach(() => {
   mocked.getConflicts.mockResolvedValue({ active: [], ignored: [] });
   mocked.createIgnore.mockResolvedValue(undefined);
   mocked.deleteIgnore.mockResolvedValue(undefined);
+  mocked.listIgnores.mockResolvedValue([]);
+  scrollToTimeCalls.length = 0;
 });
 
 const renderView = () => render(<ToastProvider><CalendarView /></ToastProvider>);
@@ -386,5 +389,58 @@ describe('unconflicted zones', () => {
     await userEvent.click(screen.getByRole('button', { name: /mark as unconflicted zone/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('end_at must be after start_at');
     expect(screen.getByRole('toolbar')).toBeInTheDocument();
+  });
+});
+
+describe('settings panel', () => {
+  afterEach(() => localStorage.clear());
+
+  test('the Settings button opens the settings panel and Close hides it, returning focus to the button', async () => {
+    renderView();
+    await screen.findByText('Planning');
+    const button = screen.getByRole('button', { name: /^settings$/i });
+    await userEvent.click(button);
+    expect(await screen.findByRole('dialog', { name: /settings/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /close/i }));
+    expect(screen.queryByRole('dialog', { name: /settings/i })).toBeNull();
+    expect(button).toHaveFocus();
+  });
+
+  test('changing "Calendar starts at" scrolls the open calendar and updates its scrollTime', async () => {
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByRole('button', { name: /^settings$/i }));
+    const input = await screen.findByLabelText('Calendar starts at');
+    fireEvent.change(input, { target: { value: '09:15' } });
+    expect(scrollToTimeCalls).toEqual(['09:15']);
+    expect(screen.getByTestId('calendar')).toHaveAttribute('data-scroll-time', '09:15');
+  });
+});
+
+describe('short event blocks', () => {
+  const short = (over = {}) => ev({ id: 's1', title: 'Quick', start_at: '2026-10-06T10:00:00.000Z', end_at: '2026-10-06T10:30:00.000Z', ...over });
+  const s2 = () => ev({ id: 's2', title: 'Other', start_at: '2026-10-06T10:15:00.000Z', end_at: '2026-10-06T11:15:00.000Z' });
+  const conflict = { eventAId: 's1', eventBId: 's2', overlapStart: '2026-10-06T10:15:00.000Z', overlapEnd: '2026-10-06T10:30:00.000Z' };
+
+  test('a 30-minute conflicting block renders its badge before the title, keeping its label', async () => {
+    mocked.listEvents.mockResolvedValue([short(), s2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [conflict], ignored: [] });
+    renderView();
+    await screen.findByText('Quick');
+    const block = screen.getByTestId('event-s1');
+    const badge = within(block).getByRole('button', { name: /^conflict: overlaps with other/i });
+    const title = within(block).getByText('Quick');
+    expect(badge.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test('a longer block keeps the badge after the title', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    const block = screen.getByTestId('event-e1');
+    const badge = within(block).getByRole('button', { name: /^conflict:/i });
+    const title = within(block).getByText('Planning');
+    expect(title.compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

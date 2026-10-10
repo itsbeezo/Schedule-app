@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -15,6 +15,7 @@ import { persistEventChange } from '../lib/eventChange';
 import { useCalendarData } from '../hooks/useCalendarData';
 import ConflictBadge from './ConflictBadge';
 import ConflictPopover from './ConflictPopover';
+import SettingsPanel from './SettingsPanel';
 import { ConflictInfo, eventConflictState, indexConflicts } from '../lib/conflictIndex';
 import { workHoursToBackground } from '../lib/workHoursBand';
 import { zonesToBackground } from '../lib/zoneBand';
@@ -54,6 +55,7 @@ export function isNarrowViewport(
 }
 
 
+const SHORT_EVENT_MS = 30 * 60 * 1000;
 const TIME_FMT: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
 
 /** "Title, 9:00 AM\u201310:30 AM": the full text for event blocks too narrow to show it. */
@@ -79,6 +81,9 @@ export default function CalendarView() {
   const data = useCalendarData();
   const [narrow] = useState(() => isNarrowViewport());
   const { showError } = useToast();
+  const calendarRef = useRef<FullCalendar>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [scrollTime, setScrollTimeState] = useState(() => getScrollTime());
   const [draft, setDraft] = useState<{ mode: 'create' | 'edit'; value: EventDraft } | null>(null);
   const [selection, setSelection] = useState<{ start: Date; end: Date } | null>(null);
 
@@ -172,6 +177,9 @@ export default function CalendarView() {
         <button className="btn btn--primary" type="button" onClick={openNewEvent}>
           Add event
         </button>
+        <button className="btn" type="button" onClick={() => setShowSettings(true)}>
+          Settings
+        </button>
       </header>
       {data.loadError && (
         <div className="load-error" role="alert">
@@ -182,10 +190,11 @@ export default function CalendarView() {
         </div>
       )}
       <FullCalendar
+        ref={calendarRef}
         {...CALENDAR_OPTIONS}
         initialView={narrow ? 'timeGrid3Day' : 'timeGridWeek'}
         headerToolbar={{ ...(CALENDAR_OPTIONS.headerToolbar as object), right: narrow ? NARROW_TOOLBAR_RIGHT : WIDE_TOOLBAR_RIGHT }}
-        scrollTime={getScrollTime()}
+        scrollTime={scrollTime}
         events={calendarEvents}
         datesSet={(arg) => data.setRange({ from: arg.start, to: arg.end })}
         select={(arg) => setSelection({ start: arg.start, end: arg.end })}
@@ -199,18 +208,24 @@ export default function CalendarView() {
           const infos = conflictIndex.get(arg.event.id);
           const state = eventConflictState(infos);
           const info = infos?.find((i) => i.state === state);
+          const { start, end } = arg.event;
+          // In short blocks the badge leads the row so a later overlapping event cannot cover it.
+          const isShort = !!start && !!end && end.getTime() - start.getTime() <= SHORT_EVENT_MS;
+          const badge =
+            state && info ? (
+              <ConflictBadge
+                state={state}
+                mode={info.mode}
+                otherTitle={titleOf(info.otherId)}
+                onOpen={(rect) => setPopover({ x: rect.left, y: rect.bottom, eventId: arg.event.id, info })}
+              />
+            ) : null;
           return (
             <div>
+              {isShort && badge}
               {arg.timeText && <div className="fc-event-time">{arg.timeText}</div>}
               <div className="fc-event-title">{arg.event.title}</div>
-              {state && info && (
-                <ConflictBadge
-                  state={state}
-                  mode={info.mode}
-                  otherTitle={titleOf(info.otherId)}
-                  onOpen={(rect) => setPopover({ x: rect.left, y: rect.bottom, eventId: arg.event.id, info })}
-                />
-              )}
+              {!isShort && badge}
             </div>
           );
         }}
@@ -247,6 +262,16 @@ export default function CalendarView() {
           onAllow={() => void chooseIgnore(popover.info, 'allow')}
           onRestore={() => void restore(popover.info)}
           onClose={() => setPopover(null)}
+        />
+      )}
+      {showSettings && (
+        <SettingsPanel
+          onClose={() => setShowSettings(false)}
+          onChanged={() => void data.reload()}
+          onScrollTimeChange={(t) => {
+            setScrollTimeState(t);
+            calendarRef.current?.getApi().scrollToTime(t);
+          }}
         />
       )}
       {draft && (

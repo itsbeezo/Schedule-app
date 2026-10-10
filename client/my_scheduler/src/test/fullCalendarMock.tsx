@@ -31,7 +31,7 @@ export default function FullCalendarMock(props: MockCalendarProps) {
       data-slot-max-time={props.slotMaxTime as string | undefined}>
       <div data-testid="bands">{(props.events ?? []).filter((e) => e.display === 'background').length}</div>
       {visible.map((e) => {
-        const info = { event: { id: e.id, title: e.title, start: new Date(e.start), end: new Date(e.end), extendedProps: e.extendedProps ?? {} } };
+        const info = { event: { id: e.id, title: e.title, display: e.display, start: new Date(e.start), end: new Date(e.end), extendedProps: e.extendedProps ?? {} } };
         return (
           <div key={e.id} ref={(el) => { if (el) props.eventDidMount?.({ event: info.event, el }); }} data-testid={`event-${e.id}`} className={(e.classNames ?? []).join(' ')}>
             {props.eventContent ? props.eventContent(info) : e.title}

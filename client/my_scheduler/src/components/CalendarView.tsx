@@ -175,6 +175,7 @@ export default function CalendarView() {
         eventDrop={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventResize={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventDidMount={(arg) => {
+          if (arg.event.display === 'background' || !arg.event.title) return;
           arg.el.title = describeEvent(arg.event.title, arg.event.start, arg.event.end);
         }}
         eventContent={(arg) => {

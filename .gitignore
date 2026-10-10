@@ -16,3 +16,9 @@ npm-debug.log*
 
 # superpowers visual companion mockups
 .superpowers/
+
+# agent worktrees
+.worktrees/
+
+# generated design screenshots (the UX reviewer reads them from the design worktree)
+client/my_scheduler/design/screenshots/*.png

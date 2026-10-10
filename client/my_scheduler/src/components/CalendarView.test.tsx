@@ -128,3 +128,34 @@ test('a failed drop reverts the event and shows a toast', async () => {
   expect(revert).toHaveBeenCalled();
   delete (window as any).__revert;
 });
+
+describe('scrollTime', () => {
+  afterEach(() => localStorage.clear());
+
+  test('is 07:00:00 by default and the full grid is not clipped', async () => {
+    renderView();
+    await screen.findByText('Planning');
+    expect(screen.getByTestId('calendar')).toHaveAttribute('data-scroll-time', '07:00:00');
+    expect(CALENDAR_OPTIONS.slotMinTime).toBeUndefined();
+    expect(CALENDAR_OPTIONS.slotMaxTime).toBeUndefined();
+  });
+
+  test('uses a stored preference', async () => {
+    localStorage.setItem('schedule.scrollTime', '06:30');
+    renderView();
+    await screen.findByText('Planning');
+    expect(screen.getByTestId('calendar')).toHaveAttribute('data-scroll-time', '06:30');
+  });
+});
+
+test('the calendar has a bounded height so the time grid scrolls internally', () => {
+  expect(CALENDAR_OPTIONS.height).toMatch(/^max\(480px, calc\(100vh/);
+  expect(CALENDAR_OPTIONS.height).not.toBe('auto');
+});
+
+test('no slotMinTime/slotMaxTime reaches FullCalendar', async () => {
+  renderView();
+  await screen.findByText('Planning');
+  expect(screen.getByTestId('calendar')).not.toHaveAttribute('data-slot-min-time');
+  expect(screen.getByTestId('calendar')).not.toHaveAttribute('data-slot-max-time');
+});

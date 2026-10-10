@@ -23,7 +23,9 @@ export default function FullCalendarMock(props: MockCalendarProps) {
   }, []);
   const visible = (props.events ?? []).filter((e) => e.display !== 'background');
   return (
-    <div data-testid="calendar">
+    <div data-testid="calendar" data-scroll-time={props.scrollTime as string | undefined}
+      data-slot-min-time={props.slotMinTime as string | undefined}
+      data-slot-max-time={props.slotMaxTime as string | undefined}>
       <div data-testid="bands">{(props.events ?? []).filter((e) => e.display === 'background').length}</div>
       {visible.map((e) => {
         const info = { event: { id: e.id, title: e.title, start: e.start, end: e.end, extendedProps: e.extendedProps ?? {} } };

@@ -35,3 +35,8 @@ Notes:
 Owner decision (not made by design): default to day view on narrow screens. It is a behavior change, so only the owner can choose it; CSS only makes the week grid scroll sideways.
 - Container sizing: `.fc .fc-event { container-type: size }` (events have explicit height). `@container (max-height: 40px)` puts time and title on one row for half-hour blocks (FC otherwise stacks them and clips the title). All container rules are prefixed `.fc` because FC's `.fc-v-event .fc-event-main-frame` rules out-specify bare selectors.
 - The scroll fade mask uses `var(--color-bg)` (alpha only matters), because the no-hard-coded-color test forbids `#000`.
+
+## Task 12c CSS: 3-day view on phones
+- The <=600px sideways-scroll rules are now week-only: `.fc .fc-view-harness:has(.fc-timeGridWeek-view)` carries `overflow-x: auto`, the right-edge fade mask and the scroll-driven `--edge` animation, and `.fc .fc-timeGridWeek-view .fc-scrollgrid { min-width: 640px }`. The 3-day, day and month views now fit the phone width (3-day: three 109px columns, no scroll, no fade). Day and Month previously inherited the 640px minimum; they now simply fit (Day: one wide column; Month: seven narrow columns).
+- `container-type: size` is now on `.fc .fc-timegrid-event` only. On month (`.fc-daygrid-event`) size containment collapsed the chips to zero height so they overlapped; month chips now lay out normally.
+- Month at 390px is legible but tight (chips show time then a clipped title); a component-level fix (dot-only events on phones) would be a frontend/owner call.

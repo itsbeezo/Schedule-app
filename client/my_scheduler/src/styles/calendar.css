@@ -125,3 +125,48 @@
 .fc .fc-daygrid-event > div { display: flex; flex-direction: column; align-items: flex-start; }
 .fc .fc-daygrid-event > div > .conflict-badge { order: 3; }
 .fc .fc-daygrid-event .fc-event-title { max-width: 100%; }
+
+/* ---- Month "+N more" link and its popover (FullCalendar dayMaxEvents). Dark theme only. ---- */
+/* The link is a real <a>: a pill with at least 24px height so it is a usable target; "+N more" is text, so it is
+   never color alone. Hover gets a tint, keyboard focus the same mint ring used on events. */
+.fc .fc-daygrid-day-bottom { overflow: visible; margin: 2px 4px 0; font-size: var(--text-sm); }
+.fc .fc-daygrid-more-link {
+  display: inline-flex; align-items: center; min-height: 24px; max-width: 100%; padding: 0 var(--space-1); box-sizing: border-box;
+  border-radius: var(--radius-pill); color: var(--color-text); font-size: var(--text-sm); font-weight: 600;
+  line-height: 1.2; white-space: nowrap; text-decoration: none; cursor: pointer;
+}
+.fc .fc-daygrid-more-link:hover { background: var(--color-hover); box-shadow: 0 0 0 1px var(--color-light-blue); text-decoration: underline; }
+.fc .fc-daygrid-more-link:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-mint); }
+
+/* The popover matches .popover: raised card, pop shadow, no hard border. z-index 45 = .popover, so it sits above the
+   grid and the date strip (20) and below dialogs (50). */
+.fc .fc-more-popover, .fc-more-popover {
+  z-index: 45; width: min(320px, calc(100vw - 16px)); max-height: min(60vh, 380px); display: flex; flex-direction: column;
+  background: var(--color-raised); color: var(--color-text); border: 0; border-radius: var(--radius-card); box-shadow: var(--shadow-pop); overflow: hidden;
+}
+.fc-more-popover .fc-popover-header {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); flex: none;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2); background: transparent; border-bottom: 1px solid var(--color-border);
+}
+.fc-more-popover .fc-popover-title { margin: 0; font-weight: 600; font-size: var(--text-md); color: var(--color-text); }
+.fc-more-popover .fc-popover-close {
+  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin: 0; flex: none;
+  border-radius: var(--radius-pill); color: var(--color-text); font-size: 20px; opacity: 1; cursor: pointer;
+}
+.fc-more-popover .fc-popover-close:hover { background: var(--color-hover); }
+.fc-more-popover .fc-popover-close:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-raised), 0 0 0 4px var(--color-mint); }
+.fc-more-popover .fc-popover-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-1) var(--space-1) var(--space-2);
+  display: flex; flex-direction: column; gap: 2px;
+}
+/* Event rows: full width, readable size, badge after the title; they keep their own event color. */
+.fc-more-popover .fc-daygrid-event-harness { margin: 0; }
+.fc-more-popover .fc-daygrid-event { margin: 0; padding: 4px 8px; font-size: var(--text-md); white-space: normal; min-height: 28px; }
+.fc-more-popover .fc-daygrid-event .fc-event-time { display: inline; }
+.fc-more-popover .fc-daygrid-event .fc-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.fc-more-popover .fc-daygrid-event > div { min-width: 0; }
+.fc-more-popover .fc-daygrid-event .conflict-badge { font-size: var(--text-sm); gap: var(--space-half); padding: 2px 8px; }
+@media (max-width: 600px) {
+  .fc .fc-daygrid-more-link { padding: 0 var(--space-half); }
+  .fc-more-popover .fc-popover-close { width: 44px; height: 44px; }
+}

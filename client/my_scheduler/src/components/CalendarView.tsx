@@ -83,6 +83,11 @@ export default function CalendarView() {
   const [narrow] = useState(() => isNarrowViewport());
   const { showError } = useToast();
   const calendarRef = useRef<FullCalendar>(null);
+  // Stable identity: a fresh object each render would make FullCalendar re-apply the option on every state change.
+  const headerToolbar = useMemo(
+    () => ({ ...(CALENDAR_OPTIONS.headerToolbar as object), right: narrow ? NARROW_TOOLBAR_RIGHT : WIDE_TOOLBAR_RIGHT }),
+    [narrow]
+  );
   const [showSettings, setShowSettings] = useState(false);
   const [scrollTime, setScrollTimeState] = useState(() => getScrollTime());
   const [draft, setDraft] = useState<{ mode: 'create' | 'edit'; value: EventDraft } | null>(null);
@@ -194,7 +199,7 @@ export default function CalendarView() {
         ref={calendarRef}
         {...CALENDAR_OPTIONS}
         initialView={narrow ? 'timeGrid3Day' : 'timeGridWeek'}
-        headerToolbar={{ ...(CALENDAR_OPTIONS.headerToolbar as object), right: narrow ? NARROW_TOOLBAR_RIGHT : WIDE_TOOLBAR_RIGHT }}
+        headerToolbar={headerToolbar}
         scrollTime={scrollTime}
         events={calendarEvents}
         datesSet={(arg) => data.setRange({ from: arg.start, to: arg.end })}

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import CalendarView, { CALENDAR_OPTIONS, describeEvent, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
-import { scrollToTimeCalls } from '../test/fullCalendarMock';
+import { optionIdentities, scrollToTimeCalls } from '../test/fullCalendarMock';
 
 jest.mock('@fullcalendar/react', () => ({ __esModule: true, default: require('../test/fullCalendarMock').default }));
 jest.mock('../api/client');
@@ -24,6 +24,8 @@ beforeEach(() => {
   mocked.deleteIgnore.mockResolvedValue(undefined);
   mocked.listIgnores.mockResolvedValue([]);
   scrollToTimeCalls.length = 0;
+  optionIdentities.headerToolbar.clear();
+  optionIdentities.views.clear();
 });
 
 const renderView = () => render(<ToastProvider><CalendarView /></ToastProvider>);
@@ -443,4 +445,20 @@ describe('short event blocks', () => {
     const title = within(block).getByText('Planning');
     expect(title.compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+});
+
+test('re-rendering for popover, selection, dialog or settings state hands FullCalendar the same option objects', async () => {
+  mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+  mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+  renderView();
+  await screen.findByText('Planning');
+  await userEvent.click(screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0]);
+  await userEvent.keyboard('{Escape}');
+  await userEvent.click(screen.getByRole('button', { name: 'mock-select' }));
+  await userEvent.click(screen.getByRole('button', { name: /^cancel/i }));
+  await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+  await screen.findByRole('dialog', { name: /settings/i });
+  await waitFor(() => expect(screen.getByLabelText(/calendar starts at/i)).toBeInTheDocument());
+  expect(optionIdentities.headerToolbar.size).toBe(1);
+  expect(optionIdentities.views.size).toBe(1);
 });

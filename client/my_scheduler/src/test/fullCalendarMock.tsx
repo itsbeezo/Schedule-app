@@ -17,10 +17,14 @@ export interface MockCalendarProps {
 export const MOCK_RANGE = { start: new Date(2026, 9, 5), end: new Date(2026, 9, 12) };
 
 export const scrollToTimeCalls: string[] = [];
+/** Distinct option-object identities FullCalendar was handed across renders (a fresh object per render makes it re-apply options). */
+export const optionIdentities = { headerToolbar: new Set<unknown>(), views: new Set<unknown>() };
 
 const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawProps, ref) {
   const props: MockCalendarProps = rawProps;
   useImperativeHandle(ref, () => ({ getApi: () => ({ scrollToTime: (t: string) => { scrollToTimeCalls.push(t); } }) }));
+  optionIdentities.headerToolbar.add(props.headerToolbar);
+  optionIdentities.views.add(props.views);
   const { datesSet } = props;
   useEffect(() => {
     datesSet?.(MOCK_RANGE);

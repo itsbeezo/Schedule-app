@@ -170,7 +170,7 @@ export default function CalendarView() {
     const start = new Date();
     start.setMinutes(0, 0, 0);
     start.setHours(start.getHours() + 1);
-    setDraft({ mode: 'create', value: newDraft(start, new Date(start.getTime() + 3600000)) });
+    setDraft({ mode: 'create', value: newDraft(start, new Date(start.getTime() + 30 * 60 * 1000)) });
   }
 
   async function save(input: EventInput, id?: string) {

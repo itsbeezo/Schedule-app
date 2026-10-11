@@ -78,6 +78,15 @@ test('Add event opens an empty dialog and creating refreshes the calendar', asyn
   await waitFor(() => expect(mocked.listEvents).toHaveBeenCalledTimes(2));
 });
 
+test('Add event defaults to a 30 minute duration', async () => {
+  renderView();
+  await screen.findByText('Planning');
+  await userEvent.click(screen.getByRole('button', { name: /add event/i }));
+  const start = new Date((screen.getByLabelText(/^start/i) as HTMLInputElement).value).getTime();
+  const end = new Date((screen.getByLabelText(/^end/i) as HTMLInputElement).value).getTime();
+  expect(end - start).toBe(30 * 60 * 1000);
+});
+
 test('dragging a range offers Add event in a toolbar, which opens the dialog on that range', async () => {
   renderView();
   await screen.findByText('Planning');

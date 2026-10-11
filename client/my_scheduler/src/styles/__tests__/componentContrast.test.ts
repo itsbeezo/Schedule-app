@@ -31,6 +31,14 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-bg', '--color-purple', UI, 'page-colored focus gap and overlap separator against a purple event'],
   ['--color-bg', '--color-royal', UI, 'page-colored focus gap and overlap separator against a default event'],
   ['--color-coral', '--color-surface', UI, 'conflict outline against the grid'],
+  // every selectable conflict color (design/CONFLICT-COLOR.md): label on badge, and badge/outline against the grid
+  ['--color-on-conflict-red', '--color-conflict-red', TEXT, 'conflict badge text, red option'],
+  ['--color-on-conflict-amber', '--color-conflict-amber', TEXT, 'conflict badge text, amber option'],
+  ['--color-conflict-red', '--color-surface', UI, 'conflict outline against the grid, red option'],
+  ['--color-conflict-amber', '--color-surface', UI, 'conflict outline against the grid, amber option'],
+  ['--color-conflict-red', '--color-bg', UI, 'conflict badge against the page, red option'],
+  ['--color-conflict-amber', '--color-bg', UI, 'conflict badge against the page, amber option'],
+  ['--color-conflict-amber', '--color-royal', UI, 'amber badge against the default event fill'],
   // coral against the royal fill is only 2.1:1; the outline's outer edge meets the grid (checked above) and the
   // conflict is never signalled by color alone (badge with icon and text), so this pairing is intentionally not asserted.
   ['--color-purple', '--color-raised', UI, 'toast error stripe, input focus border'],
@@ -47,4 +55,14 @@ const PAIRS: Array<[string, string, number, string]> = [
 
 test.each(PAIRS)('%s on %s is at least %f:1 (%s)', (fg, bg, min) => {
   expect(contrastRatio(t[fg], t[bg])).toBeGreaterThanOrEqual(min);
+});
+
+test('the conflict token defaults to coral and the badge and outline read only from it', () => {
+  expect(css).toMatch(/--color-conflict:\s*var\(--color-coral\)/);
+  expect(css).toMatch(/--color-on-conflict:\s*var\(--color-on-coral\)/);
+  const dir = path.join(__dirname, '..');
+  const comps = fs.readFileSync(path.join(dir, 'components.css'), 'utf8');
+  const cal = fs.readFileSync(path.join(dir, 'calendar.css'), 'utf8');
+  expect(comps).not.toMatch(/--color-coral|--color-on-coral/);
+  expect(cal).not.toMatch(/--color-coral|--color-on-coral/);
 });

@@ -71,7 +71,7 @@
 
 .conflict-badge {
   display: inline-flex; align-items: center; gap: var(--space-half); padding: 2px 8px;
-  background: var(--color-coral); color: var(--color-on-coral); border: 0; border-radius: var(--radius-pill);
+  background: var(--color-conflict); color: var(--color-on-conflict); border: 0; border-radius: var(--radius-pill);
   font-size: var(--text-sm); font-weight: 700; cursor: pointer;
 }
 .conflict-badge:hover { filter: brightness(1.1); }

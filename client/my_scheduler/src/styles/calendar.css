@@ -79,7 +79,7 @@
 
 /* disabled 'today' (already on today): FullCalendar fades it to .65 opacity, which dropped its label below 4.5:1 */
 .fc .fc-button:disabled { opacity: 1; color: var(--color-muted); }
-.fc .fc-event.cal-event--conflict { outline: 2px solid var(--color-coral); outline-offset: -2px; }
+.fc .fc-event.cal-event--conflict { outline: 2px solid var(--color-conflict); outline-offset: -2px; }
 .fc .fc-event.cal-event--ignored {
   /* !important: FullCalendar writes a custom event color as an inline style, which beats any selector */
   background-color: var(--color-surface) !important; color: var(--color-muted) !important;

@@ -16,8 +16,8 @@ interface Props {
   onScrollTimeChange?(time: string): void;
 }
 
-const fmt = (iso: string) =>
-  new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const fmtIn = (iso: string, timeZone: string) =>
+  new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone });
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select, textarea, [href], [tabindex]:not([tabindex="-1"])';
 
@@ -36,6 +36,7 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
   const [zoneDraft, setZoneDraft] = useState('');
   const [zoneError, setZoneError] = useState<string | null>(null);
   const [zoneSaving, setZoneSaving] = useState(false);
+  const fmt = (iso: string) => fmtIn(iso, savedZone || deviceZone);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -228,9 +229,6 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
             </button>
           </p>
           {zoneError && <p className="field__error" role="alert">{zoneError}</p>}
-          {savedZone && savedZone !== deviceZone && (
-            <p className="field__label">Calendar grid still shows times in this device's time zone.</p>
-          )}
         </div>
       </section>
 

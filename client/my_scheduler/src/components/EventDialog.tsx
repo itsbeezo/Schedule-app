@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { EventInput, EventKind } from '../api/types';
 import { isReservedColor } from '../styles/reservedColors';
 import ColorPicker from './ColorPicker';
+import { browserTimeZone, fromZonedInput, toZonedInput } from '../lib/timezone';
 
 export interface EventDraft {
   id?: string;
@@ -19,16 +20,18 @@ interface Props {
   onSave(input: EventInput, id?: string): Promise<void>;
   onDelete?(id: string): Promise<void>;
   onClose(): void;
+  /** The saved time zone; the Start/End inputs are wall-clock times in it. Defaults to the browser zone. */
+  timeZone?: string;
 }
 
-const pad = (n: number) => String(n).padStart(2, '0');
-export const toLocalInput = (d: Date) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-export default function EventDialog({ mode, initial, onSave, onDelete, onClose }: Props) {
+export default function EventDialog({ mode, initial, onSave, onDelete, onClose, timeZone }: Props) {
+  const tz = timeZone || browserTimeZone();
+  const toInput = (d: Date) => toZonedInput(d, tz);
+  const instant = (v: string) => fromZonedInput(v, tz);
   const [title, setTitle] = useState(initial.title);
-  const [start, setStart] = useState(toLocalInput(initial.start));
-  const [end, setEnd] = useState(toLocalInput(initial.end));
+  const [start, setStart] = useState(toInput(initial.start));
+  const [end, setEnd] = useState(toInput(initial.end));
   const [kind, setKind] = useState<EventKind>(initial.kind);
   const [color, setColor] = useState<string | null>(initial.color);
   const [notes, setNotes] = useState(initial.notes ?? '');
@@ -79,11 +82,11 @@ export default function EventDialog({ mode, initial, onSave, onDelete, onClose }
 
   // Changing the start moves the end by the same absolute amount, but only when the previous interval was valid.
   function changeStart(value: string) {
-    const prevStart = new Date(start).getTime();
-    const prevEnd = new Date(end).getTime();
-    const nextStart = new Date(value).getTime();
+    const prevStart = instant(start)?.getTime() ?? NaN;
+    const prevEnd = instant(end)?.getTime() ?? NaN;
+    const nextStart = instant(value)?.getTime() ?? NaN;
     if (!Number.isNaN(prevStart) && !Number.isNaN(prevEnd) && prevEnd > prevStart && !Number.isNaN(nextStart)) {
-      setEnd(toLocalInput(new Date(nextStart + (prevEnd - prevStart))));
+      setEnd(toInput(new Date(nextStart + (prevEnd - prevStart))));
     }
     setStart(value);
   }
@@ -94,9 +97,9 @@ export default function EventDialog({ mode, initial, onSave, onDelete, onClose }
     const next: typeof errors = {};
     if (!trimmed) next.title = 'Enter a title.';
     else if (trimmed.length > 200) next.title = 'Titles can be at most 200 characters.';
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+    const startDate = instant(start);
+    const endDate = instant(end);
+    if (!startDate || !endDate || endDate <= startDate) {
       next.end = 'End must be after the start.';
     }
     setErrors(next);
@@ -105,7 +108,7 @@ export default function EventDialog({ mode, initial, onSave, onDelete, onClose }
     try {
       await onSave(
         {
-          title: trimmed, start_at: startDate.toISOString(), end_at: endDate.toISOString(), kind, color,
+          title: trimmed, start_at: startDate!.toISOString(), end_at: endDate!.toISOString(), kind, color,
           notes: notes.trim() ? notes : null,
         },
         initial.id

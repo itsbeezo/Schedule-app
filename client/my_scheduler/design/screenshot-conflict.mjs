@@ -4,10 +4,9 @@ import { fileURLToPath, pathToFileURL } from 'url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
-// Default coral set (halo is the shipped "!" treatment), plus the red/amber options and the plain/pill "!" alternatives on coral.
+// Coral default (dark clock and dark "!"), plus the red/amber options.
 const jobs = [];
-for (const c of ['coral', 'red', 'amber']) for (const theme of ['dark', 'light']) jobs.push([c, theme, 'halo', `conflict-${c}-${theme}.png`]);
-for (const bang of ['plain', 'pill']) jobs.push(['coral', 'dark', bang, `conflict-coral-dark-bang-${bang}.png`]);
+for (const c of ['coral', 'red', 'amber']) for (const theme of ['dark', 'light']) jobs.push([c, theme, 'plain', `conflict-${c}-${theme}.png`]);
 for (const [c, theme, bang, file] of jobs) {
   const page = await browser.newPage({ viewport: { width: 1100, height: 520 }, deviceScaleFactor: 2 });
   await page.goto(pathToFileURL(path.join(here, 'mockups/conflict-colors.html')).href + `?c=${c}&theme=${theme}&bang=${bang}`);

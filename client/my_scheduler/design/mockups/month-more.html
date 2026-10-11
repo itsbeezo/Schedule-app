@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Month +N more</title>
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/400.css" />
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/600.css" />
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/700.css" />
+  <link rel="stylesheet" href="../../src/styles/tokens.css" />
+  <link rel="stylesheet" href="../../src/styles/base.css" />
+  <link rel="stylesheet" href="../../src/styles/components.css" />
+  <link rel="stylesheet" href="../../src/styles/calendar.css" />
+  <script src="../../node_modules/@fullcalendar/core/index.global.js"></script>
+  <script src="../../node_modules/@fullcalendar/daygrid/index.global.js"></script>
+  <style>body { padding: 16px; max-width: 1100px; margin: 0 auto; }</style></head>
+<body><div id="cal"></div>
+<script>
+  // Real FullCalendar month grid with the real CSS. Fixed Oct 2026; Oct 14 holds 8 events (two conflicting).
+  const ev = (t, h, m, d, extra = {}) => ({ title: t, start: `2026-10-${d}T${h}:${m}:00`, end: `2026-10-${d}T${h}:${String(+m + 30).padStart(2, '0')}:00`, classNames: ['cal-event', ...(extra.conflict ? ['cal-event--conflict'] : [])], extendedProps: extra });
+  const names = ['Stand-up', 'Design review', 'Lunch', 'Planning', '1:1 with Sam', 'Gym', 'Dentist', 'Team retro'];
+  const events = names.map((n, i) => ev(n, String(9 + i).padStart(2, '0'), '00', '14', { conflict: i === 1 || i === 2 }));
+  events.push(ev('Pay rent', '09', '00', '07'), ev('Call Mum', '12', '00', '21'), ev('Run', '07', '00', '21'));
+  const icon = '<svg width="16" height="14" viewBox="0 0 18 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><g class="conflict-icon__clock"><circle cx="7" cy="8" r="5.5"/><path d="M7 5v3l2 1.5"/></g><path class="conflict-icon__bang" d="M15 3.5v5.5"/><circle class="conflict-icon__bang" cx="15" cy="12" r="0.75"/></svg>';
+  const cal = new FullCalendar.Calendar(document.getElementById('cal'), {
+    plugins: [FullCalendar.DayGrid.default || FullCalendar.DayGrid], initialView: 'dayGridMonth', initialDate: '2026-10-10', dayMaxEvents: 3, height: 'auto', timeZone: 'UTC',
+    fixedWeekCount: false, events, eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
+    eventContent: (a) => ({ html: `<div><div class="fc-event-time">${a.timeText}</div><div class="fc-event-title">${a.event.title}</div>${a.event.extendedProps.conflict ? `<button class="conflict-badge" type="button" aria-label="Conflict">${icon}Conflict</button>` : ''}</div>` }),
+  });
+  cal.render();
+</script></body></html>

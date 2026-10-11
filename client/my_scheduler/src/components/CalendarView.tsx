@@ -1,8 +1,9 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import luxon3Plugin from '@fullcalendar/luxon3';
 import type { CalendarOptions } from '@fullcalendar/core';
 import { ApiEvent, EventInput } from '../api/types';
 import * as api from '../api/client';
@@ -23,9 +24,22 @@ import { ConflictInfo, eventConflictState, indexConflicts } from '../lib/conflic
 import { workHoursToBackground } from '../lib/workHoursBand';
 import { zonesToBackground } from '../lib/zoneBand';
 import { readableTextOn } from '../styles/contrast';
+import { civilLocalDate, dateOnlyString, formatTimeIn, nextHourIn, todayIn } from '../lib/timezone';
+
+/** Month view shows at most this many events per day, then a "+N more" link that opens FullCalendar's popover. */
+export const MONTH_MAX_EVENTS = 3;
+
+/** Accessible name for the "+N more" link, e.g. "2 more events on Tuesday, October 6, 2026". */
+export function moreLinkLabel(num: number, dateStr: string | null | undefined): string {
+  const base = `${num} more event${num === 1 ? '' : 's'}`;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr ?? '');
+  if (!m) return base;
+  const day = new Date(+m[1], +m[2] - 1, +m[3]);
+  return `${base} on ${day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`;
+}
 
 export const CALENDAR_OPTIONS: CalendarOptions = {
-  plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+  plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, luxon3Plugin],
   initialView: 'timeGridWeek',
   headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridDay,timeGridWeek,dayGridMonth' },
   allDaySlot: false,
@@ -40,6 +54,14 @@ export const CALENDAR_OPTIONS: CalendarOptions = {
   eventLongPressDelay: 400,
   selectLongPressDelay: 400,
   height: 'max(480px, calc(100vh - 12rem))',
+  views: { dayGridMonth: { dayMaxEvents: MONTH_MAX_EVENTS } },
+  moreLinkContent: (arg) => `+${arg.num} more`,
+  moreLinkHint: (num) => moreLinkLabel(num, null),
+  moreLinkDidMount: (arg) => {
+    // FullCalendar only knows the count; add the day from the enclosing cell so the name says which day.
+    const date = arg.el.closest('[data-date]')?.getAttribute('data-date');
+    arg.el.setAttribute('aria-label', moreLinkLabel(arg.num, date));
+  },
 };
 
 export const NARROW_QUERY = '(max-width: 600px)';
@@ -65,11 +87,18 @@ const SHORT_EVENT_MS = 30 * 60 * 1000;
 const TIME_FMT: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
 
 /** "Title, 9:00 AM\u201310:30 AM": the full text for event blocks too narrow to show it. */
-export function describeEvent(title: string, start: Date | null, end: Date | null): string {
+export function describeEvent(title: string, start: Date | null, end: Date | null, timeZone?: string): string {
   if (!start) return title;
-  const from = start.toLocaleTimeString([], TIME_FMT);
-  return end ? `${title}, ${from}\u2013${end.toLocaleTimeString([], TIME_FMT)}` : `${title}, ${from}`;
+  const fmt = (d: Date) => (timeZone ? formatTimeIn(d, timeZone) : d.toLocaleTimeString([], TIME_FMT));
+  const from = fmt(start);
+  return end ? `${title}, ${from}\u2013${fmt(end)}` : `${title}, ${from}`;
 }
+
+/** An instant from FullCalendar's ISO string (which carries the zone offset); falls back to the Date it gave. */
+export const instantOf = (iso: string | undefined, fallback: Date): Date => {
+  const d = iso ? new Date(iso) : fallback;
+  return Number.isNaN(d.getTime()) ? fallback : d;
+};
 
 export function toFullCalendarEvent(e: ApiEvent) {
   return {
@@ -85,15 +114,42 @@ export function toFullCalendarEvent(e: ApiEvent) {
 
 export default function CalendarView() {
   const data = useCalendarData();
-  const [narrow] = useState(() => isNarrowViewport());
-  const { showError } = useToast();
   const calendarRef = useRef<FullCalendar>(null);
+  const [narrow, setNarrow] = useState(() => isNarrowViewport());
+  const narrowRef = useRef(narrow);
+  narrowRef.current = narrow;
+  const lastWideView = useRef('timeGridWeek');
+  const firstNarrowRun = useRef(true);
+  // Follow the media query live (window resize, devtools device toggle, rotating a phone).
+  useEffect(() => {
+    const mq = typeof window !== 'undefined' ? window.matchMedia?.(NARROW_QUERY) : undefined;
+    if (!mq) return;
+    const onChange = (e: { matches: boolean }) => setNarrow(e.matches);
+    setNarrow(!!mq.matches);
+    if (mq.addEventListener) {
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
+    }
+    mq.addListener?.(onChange);
+    return () => mq.removeListener?.(onChange);
+  }, []);
+  // When the layout flips, switch FullCalendar's view in place (no remount), keeping the current date.
+  useEffect(() => {
+    if (firstNarrowRun.current) {
+      firstNarrowRun.current = false;
+      return;
+    }
+    const api = calendarRef.current?.getApi();
+    if (!api) return;
+    api.changeView(narrow ? NARROW_INITIAL_VIEW : lastWideView.current, api.getDate());
+  }, [narrow]);
+  const { showError } = useToast();
   // Stable identity: a fresh object each render would make FullCalendar re-apply the option on every state change.
   const headerToolbar = useMemo(
     () => (narrow ? false : { ...(CALENDAR_OPTIONS.headerToolbar as object), right: WIDE_TOOLBAR_RIGHT }),
     [narrow]
   );
-  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [currentDate, setCurrentDate] = useState(() => todayIn(data.timezone));
   const gridRef = useRef<HTMLDivElement>(null);
   const calApi = () => calendarRef.current?.getApi();
   useSwipe(gridRef, {
@@ -141,7 +197,7 @@ export default function CalendarView() {
         const extra = state === 'active' ? ['cal-event--conflict'] : state === 'ignored' ? ['cal-event--ignored'] : [];
         return { ...fc, classNames: [...fc.classNames, ...extra] };
       }),
-      // Bands use the saved time zone; the grid itself still renders in the browser's zone (see lib/timezone.ts).
+      // Bands and the grid both use the saved time zone (FullCalendar's timeZone prop below).
       ...(data.range ? workHoursToBackground(data.workHours, data.range.from, data.range.to, data.timezone) : []),
       ...(data.range ? zonesToBackground(data.zones, data.range.from, data.range.to, data.timezone) : []),
     ],
@@ -168,9 +224,7 @@ export default function CalendarView() {
   }
 
   function openNewEvent() {
-    const start = new Date();
-    start.setMinutes(0, 0, 0);
-    start.setHours(start.getHours() + 1);
+    const start = nextHourIn(data.timezone);
     setDraft({ mode: 'create', value: newDraft(start, new Date(start.getTime() + 30 * 60 * 1000)) });
   }
 
@@ -211,27 +265,29 @@ export default function CalendarView() {
         </div>
       )}
       {narrow && (
-        <MobileDateStrip selected={currentDate} onSelect={(d) => calApi()?.gotoDate(d)} onToday={() => calApi()?.today()} />
+        <MobileDateStrip selected={currentDate} today={todayIn(data.timezone)} onSelect={(d) => calApi()?.gotoDate(dateOnlyString(d))} onToday={() => calApi()?.today()} />
       )}
       <div ref={gridRef} className={narrow ? 'calendar-grid calendar-grid--day' : 'calendar-grid'}>
       <FullCalendar
         ref={calendarRef}
         {...CALENDAR_OPTIONS}
+        timeZone={data.timezone}
         {...(narrow ? { height: NARROW_HEIGHT } : {})}
         initialView={narrow ? NARROW_INITIAL_VIEW : 'timeGridWeek'}
         headerToolbar={headerToolbar}
         scrollTime={scrollTime}
         events={calendarEvents}
         datesSet={(arg) => {
+          if (!narrowRef.current && arg.view?.type) lastWideView.current = arg.view.type;
           data.setRange({ from: arg.start, to: arg.end });
-          setCurrentDate(arg.view?.currentStart ?? arg.start);
+          setCurrentDate(civilLocalDate(arg.view?.currentStart ?? arg.start, data.timezone));
         }}
-        select={(arg) => setSelection({ start: arg.start, end: arg.end })}
+        select={(arg) => setSelection({ start: instantOf(arg.startStr, arg.start), end: instantOf(arg.endStr, arg.end) })}
         eventDrop={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventResize={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventDidMount={(arg) => {
           if (arg.event.display === 'background' || !arg.event.title) return;
-          arg.el.title = describeEvent(arg.event.title, arg.event.start, arg.event.end);
+          arg.el.title = describeEvent(arg.event.title, arg.event.start, arg.event.end, data.timezone);
         }}
         eventContent={(arg) => {
           const infos = conflictIndex.get(arg.event.id);
@@ -305,6 +361,7 @@ export default function CalendarView() {
       )}
       {draft && (
         <EventDialog
+          timeZone={data.timezone}
           mode={draft.mode}
           initial={draft.value}
           onSave={save}

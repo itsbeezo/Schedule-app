@@ -1,9 +1,9 @@
 /**
- * Time zone helpers built on Intl (no extra dependencies).
+ * Time zone helpers built on Intl.
  *
- * NOTE: only the weekly work-hours bands and weekly conflict-zone bands use the saved time zone.
- * The FullCalendar event grid itself still renders in the browser's time zone until a FullCalendar
- * time zone plugin is chosen.
+ * The saved time zone drives the whole calendar: FullCalendar runs with `timeZone` set to it (luxon3 plugin),
+ * the dialogs show wall-clock times in it, and the work-hour / zone bands are computed in it. Always convert
+ * instants with these helpers (or from ISO strings carrying an offset), never with local Date getters.
  */
 
 export interface CivilDate {
@@ -95,3 +95,40 @@ export const addCivilDays = (c: CivilDate, n: number): CivilDate => {
 
 export const civilWeekday = (c: CivilDate): number => new Date(Date.UTC(c.y, c.m, c.d)).getUTCDay();
 export const civilDayNumber = (c: CivilDate): number => Date.UTC(c.y, c.m, c.d) / 86400000;
+
+const p2 = (n: number) => String(n).padStart(2, '0');
+
+/** "YYYY-MM-DDTHH:mm": the wall clock of an instant in `tz`, for datetime-local inputs. */
+export function toZonedInput(date: Date, tz: string): string {
+  const { y, m, d, h, min } = zonedParts(date, tz);
+  return `${String(y).padStart(4, '0')}-${p2(m + 1)}-${p2(d)}T${p2(h)}:${p2(min)}`;
+}
+
+/** The instant for a datetime-local value read as wall-clock in `tz`; null if it does not parse. */
+export function fromZonedInput(value: string, tz: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value);
+  if (!m) return null;
+  return zonedTimeToDate({ y: +m[1], m: +m[2] - 1, d: +m[3] }, +m[4], +m[5], tz);
+}
+
+/** "9:00 AM" for an instant, in `tz`. */
+export const formatTimeIn = (date: Date, tz: string): string =>
+  date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: tz });
+
+/** Today's date in `tz` as a local-midnight Date (a plain calendar date for the date strip). */
+export function todayIn(tz: string, now: Date = new Date()): Date {
+  const c = civilOf(now, tz);
+  return new Date(c.y, c.m, c.d);
+}
+
+/** A local-midnight Date carrying the calendar date that `date` has in `tz`. */
+export const civilLocalDate = (date: Date, tz: string): Date => todayIn(tz, date);
+
+/** "YYYY-MM-DD" of a local-midnight calendar Date; FullCalendar reads date strings in its own time zone. */
+export const dateOnlyString = (d: Date): string => `${String(d.getFullYear()).padStart(4, '0')}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+
+/** The next top-of-hour after `now`, as seen in `tz`. */
+export function nextHourIn(tz: string, now: Date = new Date()): Date {
+  const p = zonedParts(now, tz);
+  return zonedTimeToDate({ y: p.y, m: p.m, d: p.d }, p.h + 1, 0, tz);
+}

@@ -20,10 +20,6 @@
      (see design/CONFLICT-COLOR.md). */
   --color-conflict: var(--color-coral);
   --color-on-conflict: var(--color-on-coral);
-  /* Amber accent used ONLY for the "!" glyph inside the conflict badge (owner decision). An approved accent token,
-     deliberately NOT a reserved event color. It is paired with a dark halo (--color-on-conflict) because amber on coral
-     is only ~1.4:1; see design/CONFLICT-COLOR.md. */
-  --color-conflict-bang: #FFC83D;
   --color-conflict-red: #FF5A5F;
   --color-on-conflict-red: #2A0508;
   --color-conflict-amber: #FFC83D;

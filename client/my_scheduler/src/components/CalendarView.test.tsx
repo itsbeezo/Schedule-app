@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CalendarView, { CALENDAR_OPTIONS, describeEvent, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
+import CalendarView, { CALENDAR_OPTIONS, describeEvent, moreLinkLabel, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
 import { navCalls, optionIdentities, scrollToTimeCalls } from '../test/fullCalendarMock';
@@ -261,8 +261,40 @@ describe('narrow (phone) default view', () => {
     expect(cal).toHaveAttribute('data-initial-view', 'timeGridWeek');
   });
 
+  test('crossing the 600px breakpoint live switches layout without remounting or losing the date', async () => {
+    let listener: ((e: { matches: boolean }) => void) | undefined;
+    (window as any).matchMedia = jest.fn().mockReturnValue({
+      matches: false,
+      addEventListener: (_: string, l: any) => { listener = l; },
+      removeEventListener: () => { listener = undefined; },
+    });
+    const flip = (matches: boolean) => act(() => listener!({ matches }));
+    renderView();
+    const cal = await screen.findByTestId('calendar');
+    expect(cal).toHaveAttribute('data-view', 'timeGridWeek');
+    expect(screen.queryByRole('group', { name: /^(This week|Week of )/ })).toBeNull();
+    // pick a month on the wide view first so the date is not "today"
+    await userEvent.click(screen.getByText('mock-select'));
+    flip(true);
+    expect(screen.getByTestId('calendar')).toBe(cal);
+    expect(cal).toHaveAttribute('data-view', 'timeGridDay');
+    expect(cal).toHaveAttribute('data-toolbar', 'off');
+    expect(screen.getByRole('group', { name: /^(This week|Week of )/ })).toBeInTheDocument();
+    expect(navCalls).toContain('changeView:timeGridDay');
+    // jump to a date on the phone, then widen: date kept, previous wide view restored
+    await userEvent.click(screen.getByRole('button', { name: /choose date picker/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Tuesday, November 10, 2026' }));
+    flip(false);
+    expect(screen.getByTestId('calendar')).toBe(cal);
+    expect(cal).toHaveAttribute('data-view', 'timeGridWeek');
+    expect(cal).toHaveAttribute('data-toolbar', 'on');
+    expect(screen.queryByRole('group', { name: /^(This week|Week of )/ })).toBeNull();
+    await waitFor(() => expect(mocked.listEvents).toHaveBeenLastCalledWith(new Date(2026, 10, 10), new Date(2026, 10, 11)));
+  });
+
   test('there is no 3-day view any more', () => {
-    expect(CALENDAR_OPTIONS.views).toBeUndefined();
+    expect(Object.keys(CALENDAR_OPTIONS.views ?? {})).toEqual(['dayGridMonth']);
     expect(CALENDAR_OPTIONS.snapDuration).toBe('00:15:00');
   });
 });
@@ -552,5 +584,50 @@ describe('conflict popover anchors to the event block, not the badge', () => {
   test('flips above the event block top edge when there is no room below', async () => {
     const pop = await openWith(rect(120, 700, 200, 50), rect(130, 705, 20, 20));
     expect(pop).toHaveStyle({ top: `${700 - 4 - 100}px`, left: '120px' });
+  });
+});
+
+describe('saved time zone drives the grid', () => {
+  afterEach(() => { delete (window as any).__selectStr; delete (window as any).__dropStr; });
+
+  test.each(['Asia/Tokyo', 'America/New_York'])('timeZone prop, create/drag ISO output and dialog wall clock in %s', async (tz) => {
+    mocked.getSettings.mockResolvedValue({ timezone: tz });
+    renderView();
+    await screen.findByText('Planning');
+    await waitFor(() => expect(screen.getByTestId('calendar')).toHaveAttribute('data-time-zone', tz));
+    const off = tz === 'Asia/Tokyo' ? '+09:00' : '-04:00';
+    (window as any).__selectStr = { startStr: `2026-10-06T09:00:00${off}`, endStr: `2026-10-06T10:00:00${off}` };
+    await userEvent.click(screen.getByText('mock-select'));
+    await userEvent.click(within(screen.getByRole('toolbar')).getByRole('button', { name: /add event/i }));
+    expect(screen.getByLabelText(/^start/i)).toHaveValue('2026-10-06T09:00');
+    expect(screen.getByLabelText(/^end/i)).toHaveValue('2026-10-06T10:00');
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    // editing the 10:00Z event shows it in the saved zone
+    await userEvent.click(screen.getByRole('button', { name: /open planning/i }));
+    expect(screen.getByLabelText(/^start/i)).toHaveValue(tz === 'Asia/Tokyo' ? '2026-10-06T19:00' : '2026-10-06T06:00');
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    // dragging persists the instant from the ISO string
+    mocked.updateEvent.mockResolvedValue(ev());
+    (window as any).__dropStr = { startStr: `2026-10-06T09:15:00${off}`, endStr: `2026-10-06T10:15:00${off}` };
+    await userEvent.click(screen.getByRole('button', { name: /drag planning/i }));
+    const utc = tz === 'Asia/Tokyo' ? ['2026-10-06T00:15:00.000Z', '2026-10-06T01:15:00.000Z'] : ['2026-10-06T13:15:00.000Z', '2026-10-06T14:15:00.000Z'];
+    await waitFor(() => expect(mocked.updateEvent).toHaveBeenCalledWith('e1', { start_at: utc[0], end_at: utc[1] }));
+  });
+});
+
+describe('month view crowding', () => {
+  test('month view caps events per day and shows "+N more" with a dated accessible name', () => {
+    expect(CALENDAR_OPTIONS.views).toEqual({ dayGridMonth: { dayMaxEvents: 3 } });
+    expect(CALENDAR_OPTIONS.dayMaxEvents).toBeUndefined(); // week/day views are not capped
+    const content = CALENDAR_OPTIONS.moreLinkContent as (a: { num: number }) => string;
+    expect(content({ num: 4 })).toBe('+4 more');
+    expect(moreLinkLabel(1, null)).toBe('1 more event');
+    expect(moreLinkLabel(4, '2026-10-06')).toBe('4 more events on Tuesday, October 6, 2026');
+    const el = document.createElement('div');
+    el.setAttribute('data-date', '2026-10-06');
+    el.innerHTML = '<a class="fc-daygrid-more-link">x</a>';
+    const a = el.querySelector('a') as HTMLElement;
+    (CALENDAR_OPTIONS.moreLinkDidMount as any)({ el: a, num: 2 });
+    expect(a).toHaveAttribute('aria-label', '2 more events on Tuesday, October 6, 2026');
   });
 });

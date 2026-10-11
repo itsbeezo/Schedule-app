@@ -14,22 +14,18 @@
     .row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; align-items: flex-start; }
     .cell { font-size: 12px; color: var(--color-muted); } .col { position: relative; background: var(--color-surface); padding: 4px; border-radius: 8px; }
     .col .fc-event { position: relative; display: block; margin: 0; }
-    html[data-bang='plain'] .conflict-icon__bang, html[data-bang='pill'] .conflict-icon__bang { filter: none; }
     html[data-theme='light'] { --color-bg: #F4F1FF; --color-surface: #FFFFFF; --color-text: #1B1533; --color-muted: #5B5380; --color-border: rgba(20,16,42,.14); }
   </style></head>
 <body><h2 id="h"></h2><div class="fc" id="root"></div>
 <script>
   const q = new URLSearchParams(location.search);
-  const c = q.get('c') || 'coral', theme = q.get('theme') || 'dark', bang = q.get('bang') || 'halo';
+  const c = q.get('c') || 'coral', theme = q.get('theme') || 'dark';
   document.documentElement.setAttribute('data-conflict-color', c);
   document.documentElement.setAttribute('data-theme', theme);
-  document.documentElement.setAttribute('data-bang', bang);
-  document.getElementById('h').textContent = `Conflict color: ${c}, ${theme} page, bang: ${bang}`;
+  document.getElementById('h').textContent = `Conflict color: ${c}, ${theme} page`;
   // Mirrors the frontend ConflictIcon markup: clock (circle + hands) left, vertically centered "!" right.
-  // bang=plain: amber only; halo (default, from components.css); pill: amber on a dark rounded rect (mockup-only alternative).
-  const pill = bang === 'pill' ? '<rect x="13.2" y="0.8" width="3.6" height="14.4" rx="1.8" fill="var(--color-on-conflict)" stroke="none"/>' : '';
   const icon = '<svg width="16" height="14" viewBox="0 0 18 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">'
-    + '<g class="conflict-icon__clock"><circle cx="7" cy="8" r="5.5"/><path d="M7 5v3l2 1.5"/></g>' + pill
+    + '<g class="conflict-icon__clock"><circle cx="7" cy="8" r="5.5"/><path d="M7 5v3l2 1.5"/></g>'
     + '<path class="conflict-icon__bang" d="M15 3.5v5.5"/><circle class="conflict-icon__bang" cx="15" cy="12" r="0.75"/></svg>';
   const badge = (ignored) => `<button class="conflict-badge${ignored ? ' conflict-badge--ignored' : ''}" type="button" aria-label="Conflict">${icon}${ignored ? 'Ignored' : 'Conflict'}</button>`;
   const colors = { 'royal (default)': '#4A63F0', indigo: '#3B4FD6', violet: '#7B5CD6', 'deep violet': '#5B3FC4', sky: '#2F8FD6', periwinkle: '#6C7DF5' };

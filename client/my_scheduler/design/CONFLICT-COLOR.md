@@ -33,20 +33,11 @@ still guards the approved Violet dusk base colors; amber/red are covered by the 
 Compact icon-only badge: the icon is now wider (clock with a "!" to the right), and the existing 4px side padding
 keeps it uncramped (checked in the mockup shots).
 
-## Clarified decision (owner, latest): coral badge, amber "!" only
+## Final decision (owner): coral badge, dark "!" and clock, "!" left where it is
 
-The earlier amber decision was meant for the "!" glyph only, not the badge. So: `--color-conflict` / `--color-on-conflict`
-default back to coral (#FF8A5B / #2A0D05), the conflict block outline is coral again, red and amber remain options via
-`data-conflict-color`. New approved accent token `--color-conflict-bang: #FFC83D` colors the "!" (bar + dot, class
-`conflict-icon__bang`); the clock (`conflict-icon__clock`) stays on-coral dark. The token is not a reserved event color
-(`RESERVED_COLORS` and the server list are untouched).
-
-Measured contrast: amber #FFC83D on coral #FF8A5B = 1.44:1 (computed), so the amber "!" ALONE FAILS (needs 3:1 as a UI
-glyph) and is nearly invisible at 11px (shot `conflict-coral-dark-bang-plain.png`). Amber against the dark on-coral
-#2A0D05 = 11.1:1. Options rendered on six event colors in dark theme (full, compact 30-min, icon-only):
-- plain amber: `conflict-coral-dark-bang-plain.png` (illegible)
-- dark halo (drop-shadow of on-conflict around the glyph): `conflict-coral-dark.png` (legible, slightly soft; CSS only)
-- dark pill behind the "!" : `conflict-coral-dark-bang-pill.png` (crispest; needs a `<rect class="conflict-icon__pill">`
-  in ConflictIcon.tsx, CSS for it already exists and is optional)
-Shipped default: the halo (no markup dependency). Recommendation: halo now; add the pill rect when convenient for the
-crispest result. Ignored badges render the icon in the muted color with no halo.
+The amber "!" experiment (accent token `--color-conflict-bang`, dark halo, optional pill) is reverted and removed. The badge
+is coral (#FF8A5B); the clock and the "!" are both the same dark on-conflict color (#2A0D05, 7.8:1 on coral). No halo, no
+pill, no extra token. `.conflict-icon__clock` and `.conflict-icon__bang` stay as class names, styled identically to
+on-conflict, so the existing markup is valid. Ignored badges render the icon in the muted color. Red and amber remain
+options via `data-conflict-color`. Shots: `conflict-{coral,red,amber}-{dark,light}.png` (regenerate with
+`node design/screenshot-conflict.mjs`).

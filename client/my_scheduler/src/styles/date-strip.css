@@ -1,0 +1,76 @@
+/* Phone (<= 600px) one-day view: compact date strip above the calendar grid. Markup: components/MobileDateStrip.tsx.
+   Tokens only; no new colors. Interactive targets are 44px. */
+.date-strip {
+  position: sticky; top: 0; z-index: 20; margin: 0 calc(var(--space-1) * -1) var(--space-1);
+  padding: var(--space-half) var(--space-1) var(--space-1);
+  background: var(--color-bg); border-bottom: 1px solid var(--color-border);
+}
+.date-strip__header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); }
+.date-strip__title {
+  display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; min-width: 44px; padding: 0 var(--space-1);
+  margin-left: calc(var(--space-1) * -1); border: 0; border-radius: var(--radius-pill); background: transparent;
+  color: var(--color-text); font-size: var(--text-lg); font-weight: 600; cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+.date-strip__title:hover { background: var(--color-hover); }
+.date-strip__title:active { background: var(--color-purple-soft); }
+.date-strip__chevron { display: inline-block; font-size: var(--text-md); color: var(--color-muted); transition: transform var(--motion-fast) var(--motion-ease); }
+/* the component swaps the glyph too; the rotation keeps it smooth and works with either glyph */
+.date-strip__title[aria-expanded='true'] .date-strip__chevron { transform: rotate(180deg); }
+.date-strip__today { min-height: 44px; min-width: 44px; }
+
+.date-strip__week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; touch-action: pan-y; }
+.date-strip__cell { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.date-strip__dow { font-size: var(--text-sm); font-weight: 600; color: var(--color-muted); line-height: 1.2; text-align: center; padding-bottom: 2px; }
+
+.date-strip__day {
+  position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; max-width: 100%; padding: 0;
+  border: 2px solid transparent; border-radius: 50%; background: transparent; color: var(--color-text);
+  font-weight: 500; cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease);
+}
+.date-strip__num { font-size: var(--text-md); font-variant-numeric: tabular-nums; }
+.date-strip__day:hover { background: var(--color-hover); }
+.date-strip__day:active { transform: scale(0.94); background: var(--color-purple-soft); }
+/* today: a ring plus a dot under the number (shape, not only color) */
+.date-strip__day--today { border-color: var(--color-light-blue); font-weight: 600; }
+.date-strip__day--today::after {
+  content: ''; position: absolute; bottom: 4px; left: 50%; width: 4px; height: 4px; margin-left: -2px;
+  border-radius: 50%; background: currentColor;
+}
+/* selected: filled purple, bold, with a page-colored gap + outer ring so it differs from today without color */
+.date-strip__day--selected, .date-strip__day--selected:hover {
+  background: var(--color-purple); color: var(--color-on-purple); font-weight: 700; border-color: var(--color-purple);
+}
+.date-strip__day--selected .date-strip__num { text-decoration: underline; text-underline-offset: 3px; }
+.date-strip__day--selected.date-strip__day--today { border-color: var(--color-text); }
+.date-strip__day--outside { color: var(--color-muted); font-weight: 400; }
+.date-strip__day--outside.date-strip__day--selected { color: var(--color-on-purple); font-weight: 700; }
+.date-strip__day:focus-visible, .date-strip__title:focus-visible { box-shadow: var(--focus-ring); }
+
+/* expanded month: a card dropdown that pushes the grid down (no overlap with the sticky header) */
+.date-strip__picker {
+  margin-top: var(--space-half); padding: var(--space-1); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: var(--shadow-pop);
+}
+.date-strip__picker-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); }
+.date-strip__picker-nav .btn { min-height: 44px; min-width: 44px; padding: 0; font-size: var(--text-lg); }
+.date-strip__picker-title { font-weight: 600; font-size: var(--text-md); text-align: center; flex: 1; }
+.date-strip__dow-row, .date-strip__row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); justify-items: center; }
+.date-strip__dow-row { margin-top: var(--space-half); }
+.date-strip__month { display: flex; flex-direction: column; }
+.date-strip__picker .date-strip__day { width: 100%; max-width: 44px; }
+
+/* Calendar grid fills the rest of the phone screen */
+.calendar-grid { min-width: 0; }
+@media (max-width: 600px) {
+  .calendar-grid--day { min-height: 0; }
+  .calendar-grid--day .fc .fc-scrollgrid { border-radius: var(--radius-card); }
+  /* The strip already names the day, so FullCalendar's per-day header ("Wednesday") is visually hidden but stays in
+     the DOM for screen readers. The all-day row and zone rows are separate rows and are untouched. */
+  .fc .fc-timeGridDay-view .fc-col-header-cell { height: 0; padding: 0; border-bottom-width: 1px; position: relative; }
+  .fc .fc-timeGridDay-view .fc-col-header-cell-cushion {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
+}

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const dir = path.join(__dirname, '..');
-const css = ['components.css', 'calendar.css']
+const css = ['components.css', 'calendar.css', 'date-strip.css']
   .map((f) => fs.readFileSync(path.join(dir, f), 'utf8'))
   .join('\n');
 
@@ -12,7 +12,10 @@ const CONTRACT = [
   'swatch--selected', 'toast', 'toast--error', 'load-error', 'selection-toolbar', 'cal-event',
   'cal-event--time-block', 'cal-event--conflict', 'cal-event--ignored', 'cal-work-hours', 'cal-zone',
   'conflict-badge', 'conflict-badge--ignored', 'popover', 'popover__title', 'popover__actions', 'settings',
-  'settings__section',
+  'settings__section', 'date-strip', 'date-strip__header', 'date-strip__title', 'date-strip__chevron', 'date-strip__today',
+  'date-strip__week', 'date-strip__cell', 'date-strip__dow', 'date-strip__day', 'date-strip__day--selected',
+  'date-strip__day--today', 'date-strip__day--outside', 'date-strip__num', 'date-strip__picker', 'date-strip__picker-nav',
+  'date-strip__picker-title', 'date-strip__dow-row', 'date-strip__month', 'date-strip__row', 'calendar-grid',
 ];
 
 test.each(CONTRACT)('defines .%s', (name) => {
@@ -21,7 +24,7 @@ test.each(CONTRACT)('defines .%s', (name) => {
 
 test('index.css imports the font, tokens, and every stylesheet', () => {
   const index = fs.readFileSync(path.join(dir, 'index.css'), 'utf8');
-  for (const f of ['tokens.css', 'base.css', 'components.css', 'calendar.css']) expect(index).toContain(f);
+  for (const f of ['tokens.css', 'base.css', 'components.css', 'calendar.css', 'date-strip.css']) expect(index).toContain(f);
   expect(index).toContain('@fontsource/inter');
 });
 

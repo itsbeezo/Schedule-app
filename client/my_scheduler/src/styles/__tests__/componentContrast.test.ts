@@ -51,6 +51,17 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-muted', '--color-raised', UI, 'ignored dashed outline on its own fill'],
   ['--color-muted', '--color-surface', UI, 'ignored dashed outline against the grid'],
   ['--color-text', '--color-raised', UI, 'selected swatch ring'],
+  // phone date strip (date-strip.css)
+  ['--color-text', '--color-bg', TEXT, 'date-strip day numbers and month title on the page'],
+  ['--color-muted', '--color-bg', TEXT, 'date-strip weekday letters and outside-month days'],
+  ['--color-muted', '--color-surface', TEXT, 'outside-month days in the picker card'],
+  ['--color-text', '--color-surface', TEXT, 'picker day numbers on the card'],
+  ['--color-on-purple', '--color-purple', TEXT, 'selected day number'],
+  ['--color-purple', '--color-bg', UI, 'selected day disc against the page'],
+  ['--color-purple', '--color-surface', UI, 'selected day disc against the picker card'],
+  ['--color-light-blue', '--color-bg', UI, 'today ring against the page'],
+  ['--color-light-blue', '--color-surface', UI, 'today ring against the picker card'],
+  ['--color-text', '--color-purple', UI, 'today+selected ring against the selected disc'],
 ];
 
 test.each(PAIRS)('%s on %s is at least %f:1 (%s)', (fg, bg, min) => {

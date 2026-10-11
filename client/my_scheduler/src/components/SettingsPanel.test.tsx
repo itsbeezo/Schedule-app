@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SettingsPanel from './SettingsPanel';
 import { ToastProvider } from './Toast';
@@ -19,6 +19,8 @@ beforeEach(() => {
   mocked.deleteZone.mockResolvedValue(undefined);
   mocked.deleteIgnore.mockResolvedValue(undefined);
   mocked.putWorkHours.mockResolvedValue([]);
+  mocked.getSettings.mockResolvedValue({ timezone: 'America/New_York' });
+  mocked.updateSettings.mockImplementation(async (s) => s);
 });
 
 const setup = () => {
@@ -134,5 +136,73 @@ describe('focus management', () => {
     unmount();
     expect(opener).toHaveFocus();
     opener.remove();
+  });
+});
+
+describe('time zone field', () => {
+  const field = () => screen.findByLabelText('Time zone', { selector: 'input' });
+  const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  test('shows the saved zone and the detected device zone', async () => {
+    setup();
+    await waitFor(() => expect(screen.getByLabelText('Time zone', { selector: 'input' })).toHaveValue('America/New_York'));
+    expect(screen.getByText(new RegExp(`device's time zone is ${device}`, 'i'))).toBeInTheDocument();
+  });
+
+  test('changing and saving calls the API and reloads the calendar', async () => {
+    const props = setup();
+    const input = await field();
+    await waitFor(() => expect(input).toHaveValue('America/New_York'));
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Asia/Tokyo');
+    await act(async () => {
+      await userEvent.click(screen.getByRole('button', { name: /save time zone/i }));
+    });
+    await waitFor(() => expect(mocked.updateSettings).toHaveBeenCalledWith({ timezone: 'Asia/Tokyo' }));
+    expect(props.onChanged).toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole('button', { name: /save time zone/i })).toBeDisabled());
+  });
+
+  test('an invalid zone is rejected before calling the API', async () => {
+    setup();
+    const input = await field();
+    await waitFor(() => expect(input).toHaveValue('America/New_York'));
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Mars/Olympus');
+    await userEvent.click(screen.getByRole('button', { name: /save time zone/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/valid time zone/i);
+    expect(mocked.updateSettings).not.toHaveBeenCalled();
+  });
+
+  test('a server rejection is shown next to the field', async () => {
+    mocked.updateSettings.mockRejectedValue(new Error('Unknown time zone'));
+    setup();
+    const input = await field();
+    await waitFor(() => expect(input).toHaveValue('America/New_York'));
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Asia/Tokyo');
+    await userEvent.click(screen.getByRole('button', { name: /save time zone/i }));
+    expect((await screen.findAllByText('Unknown time zone')).length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByRole('button', { name: /save time zone/i })).not.toBeDisabled());
+  });
+
+  test('"Use this device\'s time zone" fills the field', async () => {
+    mocked.getSettings.mockResolvedValue({ timezone: device === 'Asia/Tokyo' ? 'Europe/Paris' : 'Asia/Tokyo' });
+    setup();
+    await userEvent.click(await screen.findByRole('button', { name: /use this device's time zone/i }));
+    await waitFor(() => expect(screen.getByLabelText('Time zone', { selector: 'input' })).toHaveValue(device));
+  });
+
+  test('notes that the grid still uses the device zone when the saved zone differs', async () => {
+    mocked.getSettings.mockResolvedValue({ timezone: device === 'Asia/Tokyo' ? 'Europe/Paris' : 'Asia/Tokyo' });
+    setup();
+    expect(await screen.findByText('Calendar grid still shows times in this device\'s time zone.')).toBeInTheDocument();
+  });
+
+  test('no note when the saved zone is the device zone', async () => {
+    mocked.getSettings.mockResolvedValue({ timezone: device });
+    setup();
+    await waitFor(() => expect(screen.getByLabelText('Time zone', { selector: 'input' })).toHaveValue(device));
+    expect(screen.queryByText(/grid still shows/i)).toBeNull();
   });
 });

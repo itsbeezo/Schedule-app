@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as api from '../api/client';
+import { browserTimeZone } from '../lib/timezone';
 import { ApiEvent, ConflictsResponse, ConflictZone, WorkHour } from '../api/types';
 
 export interface Range {
@@ -7,11 +8,22 @@ export interface Range {
   to: Date;
 }
 
+/** The saved zone, or the browser's if settings cannot be read (the calendar must still load). */
+async function loadTimeZone(): Promise<string> {
+  try {
+    const s = await api.getSettings();
+    return s?.timezone || browserTimeZone();
+  } catch {
+    return browserTimeZone();
+  }
+}
+
 export function useCalendarData() {
   const [range, setRange] = useState<Range | null>(null);
   const [events, setEvents] = useState<ApiEvent[]>([]);
   const [workHours, setWorkHours] = useState<WorkHour[]>([]);
   const [zones, setZones] = useState<ConflictZone[]>([]);
+  const [timezone, setTimezone] = useState<string>(browserTimeZone());
   const [conflicts, setConflicts] = useState<ConflictsResponse>({ active: [], ignored: [] });
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -22,17 +34,19 @@ export function useCalendarData() {
     if (!range) return;
     const requestId = ++latestRequest.current;
     try {
-      const [e, w, z, c] = await Promise.all([
+      const [e, w, z, c, tz] = await Promise.all([
         api.listEvents(range.from, range.to),
         api.listWorkHours(),
         api.listZones(),
         api.getConflicts(range.from, range.to),
+        loadTimeZone(),
       ]);
       if (requestId !== latestRequest.current) return;
       setEvents(e);
       setWorkHours(w);
       setZones(z);
       setConflicts(c);
+      setTimezone(tz);
       setLoadError(null);
     } catch (err) {
       if (requestId !== latestRequest.current) return;
@@ -44,5 +58,5 @@ export function useCalendarData() {
     void reload();
   }, [reload]);
 
-  return { events, workHours, zones, conflicts, range, setRange, loadError, reload, setEvents };
+  return { events, workHours, zones, timezone, conflicts, range, setRange, loadError, reload, setEvents };
 }

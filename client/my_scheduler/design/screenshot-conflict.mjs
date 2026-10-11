@@ -4,14 +4,16 @@ import { fileURLToPath, pathToFileURL } from 'url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
-for (const c of ['coral', 'red', 'amber']) {
-  for (const theme of ['dark', 'light']) {
-    const page = await browser.newPage({ viewport: { width: 1100, height: 520 } });
-    await page.goto(pathToFileURL(path.join(here, 'mockups/conflict-colors.html')).href + `?c=${c}&theme=${theme}`);
-    await page.waitForLoadState('networkidle');
-    await page.screenshot({ path: path.join(here, 'screenshots', `conflict-${c}-${theme}.png`), fullPage: true });
-    await page.close();
-  }
+// Default coral set (halo is the shipped "!" treatment), plus the red/amber options and the plain/pill "!" alternatives on coral.
+const jobs = [];
+for (const c of ['coral', 'red', 'amber']) for (const theme of ['dark', 'light']) jobs.push([c, theme, 'halo', `conflict-${c}-${theme}.png`]);
+for (const bang of ['plain', 'pill']) jobs.push(['coral', 'dark', bang, `conflict-coral-dark-bang-${bang}.png`]);
+for (const [c, theme, bang, file] of jobs) {
+  const page = await browser.newPage({ viewport: { width: 1100, height: 520 }, deviceScaleFactor: 2 });
+  await page.goto(pathToFileURL(path.join(here, 'mockups/conflict-colors.html')).href + `?c=${c}&theme=${theme}&bang=${bang}`);
+  await page.waitForLoadState('networkidle');
+  await page.screenshot({ path: path.join(here, 'screenshots', file), fullPage: true });
+  await page.close();
 }
 await browser.close();
 console.log('wrote conflict screenshots');

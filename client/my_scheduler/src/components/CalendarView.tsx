@@ -141,10 +141,11 @@ export default function CalendarView() {
         const extra = state === 'active' ? ['cal-event--conflict'] : state === 'ignored' ? ['cal-event--ignored'] : [];
         return { ...fc, classNames: [...fc.classNames, ...extra] };
       }),
-      ...(data.range ? workHoursToBackground(data.workHours, data.range.from, data.range.to) : []),
-      ...(data.range ? zonesToBackground(data.zones, data.range.from, data.range.to) : []),
+      // Bands use the saved time zone; the grid itself still renders in the browser's zone (see lib/timezone.ts).
+      ...(data.range ? workHoursToBackground(data.workHours, data.range.from, data.range.to, data.timezone) : []),
+      ...(data.range ? zonesToBackground(data.zones, data.range.from, data.range.to, data.timezone) : []),
     ],
-    [data.events, data.workHours, data.zones, data.range, conflictIndex]
+    [data.events, data.workHours, data.zones, data.range, data.timezone, conflictIndex]
   );
 
   async function markZone(repeatsWeekly: boolean) {
@@ -170,7 +171,7 @@ export default function CalendarView() {
     const start = new Date();
     start.setMinutes(0, 0, 0);
     start.setHours(start.getHours() + 1);
-    setDraft({ mode: 'create', value: newDraft(start, new Date(start.getTime() + 3600000)) });
+    setDraft({ mode: 'create', value: newDraft(start, new Date(start.getTime() + 30 * 60 * 1000)) });
   }
 
   async function save(input: EventInput, id?: string) {

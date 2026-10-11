@@ -25,11 +25,12 @@ export async function withUser<T>(
   }
 }
 
+/** Creates the user row with a default timezone only if it is new; a saved timezone is never overwritten. */
 export async function ensureUser(pool: Pool, userId: string, timezone: string): Promise<void> {
   await withUser(pool, userId, (c) =>
     c.query(
       `INSERT INTO users(id, timezone) VALUES ($1, $2)
-       ON CONFLICT (id) DO UPDATE SET timezone = EXCLUDED.timezone`,
+       ON CONFLICT (id) DO NOTHING`,
       [userId, timezone]
     )
   );

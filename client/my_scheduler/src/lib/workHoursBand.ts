@@ -1,4 +1,5 @@
 import { WorkHour } from '../api/types';
+import { addCivilDays, browserTimeZone, civilOf, civilWeekday, zonedTimeToDate } from './timezone';
 
 export interface BackgroundEvent {
   id: string;
@@ -9,24 +10,29 @@ export interface BackgroundEvent {
   classNames: string[];
 }
 
-/** One background band per matching local weekday between rangeStart (inclusive) and rangeEnd (exclusive). */
-export function workHoursToBackground(workHours: WorkHour[], rangeStart: Date, rangeEnd: Date): BackgroundEvent[] {
+/**
+ * One background band per matching weekday (in `timeZone`, default the browser's) between rangeStart
+ * (inclusive) and rangeEnd (exclusive).
+ */
+export function workHoursToBackground(
+  workHours: WorkHour[], rangeStart: Date, rangeEnd: Date, timeZone: string = browserTimeZone()
+): BackgroundEvent[] {
   const out: BackgroundEvent[] = [];
-  const day = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
-  while (day < rangeEnd) {
+  let day = civilOf(rangeStart, timeZone);
+  while (zonedTimeToDate(day, 0, 0, timeZone) < rangeEnd) {
     for (const w of workHours) {
-      if (w.weekday !== day.getDay()) continue;
+      if (w.weekday !== civilWeekday(day)) continue;
       const [sh, sm] = w.start_time.split(':').map(Number);
       const [eh, em] = w.end_time.split(':').map(Number);
       out.push({
-        id: `work-hours-${day.getFullYear()}-${day.getMonth()}-${day.getDate()}-${w.start_time}`,
-        start: new Date(day.getFullYear(), day.getMonth(), day.getDate(), sh, sm),
-        end: new Date(day.getFullYear(), day.getMonth(), day.getDate(), eh, em),
+        id: `work-hours-${day.y}-${day.m}-${day.d}-${w.start_time}`,
+        start: zonedTimeToDate(day, sh, sm, timeZone),
+        end: zonedTimeToDate(day, eh, em, timeZone),
         display: 'background',
         classNames: ['cal-work-hours'],
       });
     }
-    day.setDate(day.getDate() + 1);
+    day = addCivilDays(day, 1);
   }
   return out;
 }

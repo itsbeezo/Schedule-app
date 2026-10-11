@@ -15,11 +15,15 @@
   --color-on-mint: #06241A;
   --color-on-coral: #2A0D05;
 
-  /* Conflict signal color: the ONE place the conflict badge and the conflict outline read from. Default is AMBER
-     (owner decision; a minor UI accent, deliberately NOT a reserved event color). Coral and red stay switchable with
-     <html data-conflict-color="coral|red"> (see design/CONFLICT-COLOR.md). */
-  --color-conflict: var(--color-conflict-amber);
-  --color-on-conflict: var(--color-on-conflict-amber);
+  /* Conflict signal color: the ONE place the conflict badge and the conflict outline read from. Default is CORAL
+     (owner decision, restored). Red and amber stay switchable with <html data-conflict-color="red|amber">
+     (see design/CONFLICT-COLOR.md). */
+  --color-conflict: var(--color-coral);
+  --color-on-conflict: var(--color-on-coral);
+  /* Amber accent used ONLY for the "!" glyph inside the conflict badge (owner decision). An approved accent token,
+     deliberately NOT a reserved event color. It is paired with a dark halo (--color-on-conflict) because amber on coral
+     is only ~1.4:1; see design/CONFLICT-COLOR.md. */
+  --color-conflict-bang: #FFC83D;
   --color-conflict-red: #FF5A5F;
   --color-on-conflict-red: #2A0508;
   --color-conflict-amber: #FFC83D;

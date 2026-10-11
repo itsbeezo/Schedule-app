@@ -60,3 +60,7 @@ export interface ConflictIgnore {
   event_a_title: string;
   event_b_title: string;
 }
+
+export interface Settings {
+  timezone: string; // IANA zone, e.g. America/New_York
+}

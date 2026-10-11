@@ -39,7 +39,10 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-conflict-red', '--color-bg', UI, 'conflict badge against the page, red option'],
   ['--color-conflict-amber', '--color-bg', UI, 'conflict badge against the page, amber option'],
   ['--color-conflict-amber', '--color-royal', UI, 'amber badge against the default event fill'],
-  // the default (amber) clears 3:1 against the default event fill, asserted above. Coral against the royal fill is only 2.1:1; the outline's outer edge meets the grid (checked above) and the
+  // "!" glyph: amber accent on the dark on-coral halo must read; amber directly on coral does not (see below)
+  ['--color-conflict-bang', '--color-on-coral', TEXT, 'amber "!" against its dark halo/pill'],
+  ['--color-conflict-bang', '--color-surface', UI, 'amber "!" against the grid'],
+  // the amber option clears 3:1 against the default event fill, asserted above. Coral against the royal fill is only 2.1:1; the outline's outer edge meets the grid (checked above) and the
   // conflict is never signalled by color alone (badge with icon and text), so this pairing is intentionally not asserted.
   ['--color-purple', '--color-raised', UI, 'toast error stripe, input focus border'],
   ['--color-purple', '--color-surface', UI, 'input focus border on field'],
@@ -69,12 +72,22 @@ test.each(PAIRS)('%s on %s is at least %f:1 (%s)', (fg, bg, min) => {
   expect(contrastRatio(t[fg], t[bg])).toBeGreaterThanOrEqual(min);
 });
 
-test('the conflict token defaults to the amber accent and the badge and outline read only from it', () => {
-  expect(css).toMatch(/--color-conflict:\s*var\(--color-conflict-amber\)/);
-  expect(css).toMatch(/--color-on-conflict:\s*var\(--color-on-conflict-amber\)/);
+test('the conflict token defaults to coral and the badge and outline read only from it', () => {
+  expect(css).toMatch(/--color-conflict:\s*var\(--color-coral\)/);
+  expect(css).toMatch(/--color-on-conflict:\s*var\(--color-on-coral\)/);
   const dir = path.join(__dirname, '..');
   const comps = fs.readFileSync(path.join(dir, 'components.css'), 'utf8');
   const cal = fs.readFileSync(path.join(dir, 'calendar.css'), 'utf8');
   expect(comps).not.toMatch(/--color-coral|--color-on-coral/);
   expect(cal).not.toMatch(/--color-coral|--color-on-coral/);
+});
+
+test('amber "!" alone on coral fails contrast, so the dark halo must stay in the css', () => {
+  expect(contrastRatio(t['--color-conflict-bang'], t['--color-coral'])).toBeLessThan(UI);
+  const comps = fs.readFileSync(path.join(__dirname, '..', 'components.css'), 'utf8');
+  const rule = /\.conflict-icon__bang\s*\{([^}]*)\}/.exec(comps)![1];
+  expect(rule).toMatch(/stroke:\s*var\(--color-conflict-bang\)/);
+  expect(rule).toMatch(/fill:\s*var\(--color-conflict-bang\)/);
+  expect(rule).toMatch(/drop-shadow\([^)]*var\(--color-on-conflict\)/);
+  expect(comps).toMatch(/\.conflict-icon__clock\s*\{[^}]*var\(--color-on-conflict\)/);
 });

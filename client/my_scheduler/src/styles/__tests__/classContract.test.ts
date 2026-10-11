@@ -11,7 +11,7 @@ const CONTRACT = [
   'dialog__backdrop', 'dialog__title', 'field', 'field__label', 'field__input', 'field__error', 'swatch',
   'swatch--selected', 'toast', 'toast--error', 'load-error', 'selection-toolbar', 'cal-event',
   'cal-event--time-block', 'cal-event--conflict', 'cal-event--ignored', 'cal-work-hours', 'cal-zone',
-  'conflict-badge', 'conflict-badge--ignored', 'popover', 'popover__title', 'popover__actions', 'settings',
+  'conflict-badge', 'conflict-badge--ignored', 'conflict-icon__bang', 'conflict-icon__clock', 'popover', 'popover__title', 'popover__actions', 'settings',
   'settings__section', 'date-strip', 'date-strip__header', 'date-strip__title', 'date-strip__chevron', 'date-strip__today',
   'date-strip__week', 'date-strip__cell', 'date-strip__dow', 'date-strip__day', 'date-strip__day--selected',
   'date-strip__day--today', 'date-strip__day--outside', 'date-strip__num', 'date-strip__picker', 'date-strip__picker-nav',

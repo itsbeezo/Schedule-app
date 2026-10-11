@@ -74,18 +74,11 @@
   background: var(--color-conflict); color: var(--color-on-conflict); border: 0; border-radius: var(--radius-pill);
   font-size: var(--text-sm); font-weight: 700; cursor: pointer;
 }
-/* Icon parts (ConflictIcon.tsx). The clock inherits the badge's dark on-conflict color through currentColor.
-   The "!" (bar and dot) is amber with a dark halo of --color-on-conflict: the halo is what makes it legible on coral. */
-.conflict-icon__clock { stroke: var(--color-on-conflict); }
-.conflict-icon__bang {
-  stroke: var(--color-conflict-bang); fill: var(--color-conflict-bang);
-  filter: drop-shadow(0 0 0.7px var(--color-on-conflict)) drop-shadow(0 0 0.7px var(--color-on-conflict)) drop-shadow(0 0 0.7px var(--color-on-conflict));
-}
-/* Optional stronger treatment if ConflictIcon adds a rounded <rect class="conflict-icon__pill"> behind the "!" (not required). */
-.conflict-icon__pill { fill: var(--color-on-conflict); stroke: none; }
-.conflict-badge--ignored .conflict-icon__pill { display: none; }
+/* Icon parts (ConflictIcon.tsx). Owner decision: clock and "!" are the same dark on-conflict color, no halo, no pill. */
+.conflict-icon__clock, .conflict-icon__bang { stroke: var(--color-on-conflict); }
+.conflict-icon__bang { fill: var(--color-on-conflict); }
 .conflict-badge--ignored .conflict-icon__clock { stroke: currentColor; }
-.conflict-badge--ignored .conflict-icon__bang { stroke: currentColor; fill: currentColor; filter: none; }
+.conflict-badge--ignored .conflict-icon__bang { stroke: currentColor; fill: currentColor; }
 .conflict-badge:hover { filter: brightness(1.1); }
 .conflict-badge--ignored { background: var(--color-surface); color: var(--color-muted); border: 1px solid var(--color-muted); font-weight: 600; }
 

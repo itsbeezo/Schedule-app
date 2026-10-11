@@ -39,9 +39,6 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-conflict-red', '--color-bg', UI, 'conflict badge against the page, red option'],
   ['--color-conflict-amber', '--color-bg', UI, 'conflict badge against the page, amber option'],
   ['--color-conflict-amber', '--color-royal', UI, 'amber badge against the default event fill'],
-  // "!" glyph: amber accent on the dark on-coral halo must read; amber directly on coral does not (see below)
-  ['--color-conflict-bang', '--color-on-coral', TEXT, 'amber "!" against its dark halo/pill'],
-  ['--color-conflict-bang', '--color-surface', UI, 'amber "!" against the grid'],
   // the amber option clears 3:1 against the default event fill, asserted above. Coral against the royal fill is only 2.1:1; the outline's outer edge meets the grid (checked above) and the
   // conflict is never signalled by color alone (badge with icon and text), so this pairing is intentionally not asserted.
   ['--color-purple', '--color-raised', UI, 'toast error stripe, input focus border'],
@@ -82,12 +79,11 @@ test('the conflict token defaults to coral and the badge and outline read only f
   expect(cal).not.toMatch(/--color-coral|--color-on-coral/);
 });
 
-test('amber "!" alone on coral fails contrast, so the dark halo must stay in the css', () => {
-  expect(contrastRatio(t['--color-conflict-bang'], t['--color-coral'])).toBeLessThan(UI);
+test('the "!" and the clock use the same dark on-conflict color: no amber accent, halo or pill', () => {
+  expect(t['--color-conflict-bang']).toBeUndefined();
   const comps = fs.readFileSync(path.join(__dirname, '..', 'components.css'), 'utf8');
-  const rule = /\.conflict-icon__bang\s*\{([^}]*)\}/.exec(comps)![1];
-  expect(rule).toMatch(/stroke:\s*var\(--color-conflict-bang\)/);
-  expect(rule).toMatch(/fill:\s*var\(--color-conflict-bang\)/);
-  expect(rule).toMatch(/drop-shadow\([^)]*var\(--color-on-conflict\)/);
-  expect(comps).toMatch(/\.conflict-icon__clock\s*\{[^}]*var\(--color-on-conflict\)/);
+  expect(comps).toMatch(/\.conflict-icon__clock,\s*\.conflict-icon__bang\s*\{[^}]*stroke:\s*var\(--color-on-conflict\)/);
+  expect(/^\.conflict-icon__bang\s*\{([^}]*)\}/m.exec(comps)![1]).toMatch(/fill:\s*var\(--color-on-conflict\)/);
+  expect(comps).not.toMatch(/drop-shadow|conflict-bang|conflict-icon__pill/);
+  expect(contrastRatio(t['--color-on-coral'], t['--color-coral'])).toBeGreaterThanOrEqual(TEXT);
 });

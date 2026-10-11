@@ -88,3 +88,15 @@ test('the chevron glyph is the same whether the picker is open or closed', async
   await userEvent.click(btn);
   expect(glyph()).toBe('▾');
 });
+
+test('header title follows the picker month while open and reverts when closed', async () => {
+  setup();
+  const toggle = screen.getByRole('button', { name: /October 2026/ });
+  const text = () => toggle.textContent!.replace('▾', '').trim();
+  expect(text()).toBe('October 2026');
+  await userEvent.click(toggle);
+  await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
+  expect(text()).toBe('November 2026');
+  await userEvent.click(toggle);
+  expect(text()).toBe('October 2026');
+});

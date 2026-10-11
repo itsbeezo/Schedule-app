@@ -62,7 +62,7 @@ export default function ConflictPopover({ anchor, otherTitle, state, mode, onIgn
   }, [onClose]);
 
   return (
-    <div ref={ref} className="popover" role="dialog" aria-label="Conflict options" style={pos ? { left: pos.left, top: pos.top } : { left: 0, top: 0, visibility: 'hidden' }}>
+    <div ref={ref} className="popover" role="dialog" aria-label="Conflict options" style={pos ? { left: pos.left, top: pos.top } : { left: 0, top: 0 }}>
       {state === 'active' ? (
         <>
           <p className="popover__title">Overlaps with {otherTitle}</p>

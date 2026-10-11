@@ -4,7 +4,7 @@ type Info = Record<string, any>;
 
 export interface MockCalendarProps {
   events?: Info[];
-  datesSet?: (arg: { start: Date; end: Date; view?: { currentStart: Date } }) => void;
+  datesSet?: (arg: { start: Date; end: Date; view?: { currentStart: Date; type?: string } }) => void;
   select?: (arg: { start: Date; end: Date }) => void;
   eventClick?: (arg: Info) => void;
   eventDrop?: (arg: Info) => void;
@@ -25,10 +25,13 @@ export const optionIdentities = { headerToolbar: new Set<unknown>(), views: new 
 const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawProps, ref) {
   const props: MockCalendarProps = rawProps;
   const dayRef = React.useRef<Date | null>(null);
-  const emitDay = (d: Date) => {
+  const [view, setView] = React.useState<string | undefined>(props.initialView as string | undefined);
+  const viewRef = React.useRef(view);
+  viewRef.current = view;
+  const emitDay = (d: Date, type: string | undefined = viewRef.current) => {
     const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     dayRef.current = start;
-    props.datesSet?.({ start, end: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1), view: { currentStart: start } });
+    props.datesSet?.({ start, end: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1), view: { currentStart: start, type } });
   };
   const step = (n: number) => { const c = dayRef.current ?? MOCK_RANGE.start; emitDay(new Date(c.getFullYear(), c.getMonth(), c.getDate() + n)); };
   useImperativeHandle(ref, () => ({
@@ -37,7 +40,13 @@ const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawP
       next: () => { navCalls.push('next'); step(1); },
       prev: () => { navCalls.push('prev'); step(-1); },
       today: () => { navCalls.push('today'); emitDay(new Date()); },
-      gotoDate: (d: Date) => { navCalls.push(`gotoDate:${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`); emitDay(d); },
+      gotoDate: (d: Date | string) => {
+        const date = typeof d === 'string' ? new Date(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) : d;
+        navCalls.push(`gotoDate:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`);
+        emitDay(date);
+      },
+      getDate: () => dayRef.current ?? MOCK_RANGE.start,
+      changeView: (type: string, d?: Date) => { navCalls.push(`changeView:${type}`); setView(type); emitDay(d ?? dayRef.current ?? MOCK_RANGE.start, type); },
     }),
   }));
   optionIdentities.headerToolbar.add(props.headerToolbar);
@@ -49,7 +58,7 @@ const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawP
   }, []);
   const visible = (props.events ?? []).filter((e) => e.display !== 'background');
   return (
-    <div data-testid="calendar" data-initial-view={props.initialView as string | undefined}
+    <div data-testid="calendar" data-initial-view={props.initialView as string | undefined} data-view={view} data-height={String(props.height)}
       data-toolbar-right={props.headerToolbar ? (props.headerToolbar as Info).right : undefined}
       data-toolbar={props.headerToolbar === false ? 'off' : 'on'}
       data-scroll-time={props.scrollTime as string | undefined}

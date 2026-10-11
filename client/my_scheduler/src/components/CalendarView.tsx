@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -85,9 +85,36 @@ export function toFullCalendarEvent(e: ApiEvent) {
 
 export default function CalendarView() {
   const data = useCalendarData();
-  const [narrow] = useState(() => isNarrowViewport());
-  const { showError } = useToast();
   const calendarRef = useRef<FullCalendar>(null);
+  const [narrow, setNarrow] = useState(() => isNarrowViewport());
+  const narrowRef = useRef(narrow);
+  narrowRef.current = narrow;
+  const lastWideView = useRef('timeGridWeek');
+  const firstNarrowRun = useRef(true);
+  // Follow the media query live (window resize, devtools device toggle, rotating a phone).
+  useEffect(() => {
+    const mq = typeof window !== 'undefined' ? window.matchMedia?.(NARROW_QUERY) : undefined;
+    if (!mq) return;
+    const onChange = (e: { matches: boolean }) => setNarrow(e.matches);
+    setNarrow(!!mq.matches);
+    if (mq.addEventListener) {
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
+    }
+    mq.addListener?.(onChange);
+    return () => mq.removeListener?.(onChange);
+  }, []);
+  // When the layout flips, switch FullCalendar's view in place (no remount), keeping the current date.
+  useEffect(() => {
+    if (firstNarrowRun.current) {
+      firstNarrowRun.current = false;
+      return;
+    }
+    const api = calendarRef.current?.getApi();
+    if (!api) return;
+    api.changeView(narrow ? NARROW_INITIAL_VIEW : lastWideView.current, api.getDate());
+  }, [narrow]);
+  const { showError } = useToast();
   // Stable identity: a fresh object each render would make FullCalendar re-apply the option on every state change.
   const headerToolbar = useMemo(
     () => (narrow ? false : { ...(CALENDAR_OPTIONS.headerToolbar as object), right: WIDE_TOOLBAR_RIGHT }),
@@ -223,6 +250,7 @@ export default function CalendarView() {
         scrollTime={scrollTime}
         events={calendarEvents}
         datesSet={(arg) => {
+          if (!narrowRef.current && arg.view?.type) lastWideView.current = arg.view.type;
           data.setRange({ from: arg.start, to: arg.end });
           setCurrentDate(arg.view?.currentStart ?? arg.start);
         }}

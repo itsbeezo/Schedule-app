@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CalendarView, { CALENDAR_OPTIONS, describeEvent, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
@@ -259,6 +259,38 @@ describe('narrow (phone) default view', () => {
     renderView();
     cal = await screen.findByTestId('calendar');
     expect(cal).toHaveAttribute('data-initial-view', 'timeGridWeek');
+  });
+
+  test('crossing the 600px breakpoint live switches layout without remounting or losing the date', async () => {
+    let listener: ((e: { matches: boolean }) => void) | undefined;
+    (window as any).matchMedia = jest.fn().mockReturnValue({
+      matches: false,
+      addEventListener: (_: string, l: any) => { listener = l; },
+      removeEventListener: () => { listener = undefined; },
+    });
+    const flip = (matches: boolean) => act(() => listener!({ matches }));
+    renderView();
+    const cal = await screen.findByTestId('calendar');
+    expect(cal).toHaveAttribute('data-view', 'timeGridWeek');
+    expect(screen.queryByRole('group', { name: /^(This week|Week of )/ })).toBeNull();
+    // pick a month on the wide view first so the date is not "today"
+    await userEvent.click(screen.getByText('mock-select'));
+    flip(true);
+    expect(screen.getByTestId('calendar')).toBe(cal);
+    expect(cal).toHaveAttribute('data-view', 'timeGridDay');
+    expect(cal).toHaveAttribute('data-toolbar', 'off');
+    expect(screen.getByRole('group', { name: /^(This week|Week of )/ })).toBeInTheDocument();
+    expect(navCalls).toContain('changeView:timeGridDay');
+    // jump to a date on the phone, then widen: date kept, previous wide view restored
+    await userEvent.click(screen.getByRole('button', { name: /choose date picker/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Tuesday, November 10, 2026' }));
+    flip(false);
+    expect(screen.getByTestId('calendar')).toBe(cal);
+    expect(cal).toHaveAttribute('data-view', 'timeGridWeek');
+    expect(cal).toHaveAttribute('data-toolbar', 'on');
+    expect(screen.queryByRole('group', { name: /^(This week|Week of )/ })).toBeNull();
+    await waitFor(() => expect(mocked.listEvents).toHaveBeenLastCalledWith(new Date(2026, 10, 10), new Date(2026, 10, 11)));
   });
 
   test('there is no 3-day view any more', () => {

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>Title ellipsis states</title>
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/400.css" />
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/600.css" />
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/700.css" />
+  <link rel="stylesheet" href="../../src/styles/tokens.css" />
+  <link rel="stylesheet" href="../../src/styles/base.css" />
+  <link rel="stylesheet" href="../../src/styles/components.css" />
+  <link rel="stylesheet" href="../../src/styles/calendar.css" />
+  <style>
+    /* Mockup scaffold: mimics FullCalendar's time-grid event DOM (same classes as CalendarView's eventContent). */
+    body { padding: 16px; } .row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 16px; }
+    .cell { color: var(--color-muted); font-size: 12px; } .col { position: relative; background: var(--color-surface); }
+    .col .fc-event { position: relative; display: block; margin: 0; }
+  </style></head>
+<body><div class="fc" id="root"></div>
+<script>
+  const root = document.getElementById('root');
+  const heights = { '15 min': 20, '30 min': 40, '60 min': 80 };
+  const widths = [90, 140, 200, 300];
+  const title = 'Call with Alex and the whole design team';
+  for (const [label, h] of Object.entries(heights)) {
+    for (const withTime of [true, false]) {
+      const row = document.createElement('div'); row.className = 'row';
+      for (const w of widths) {
+        const cell = document.createElement('div'); cell.className = 'cell';
+        cell.innerHTML = `${label}${withTime ? '' : ', no time'}, ${w}px<div class="col" style="width:${w}px;height:${h + 4}px"><div class="fc-timegrid-event fc-event cal-event${h <= 20 ? ' fc-timegrid-event-short' : ''}" style="height:${h}px"><div class="fc-event-main"><div>${withTime ? '<div class="fc-event-time">1:00 - 1:30</div>' : ''}<div class="fc-event-title">${title}</div></div></div></div></div>`;
+        row.appendChild(cell);
+      }
+      root.appendChild(row);
+    }
+  }
+</script></body></html>

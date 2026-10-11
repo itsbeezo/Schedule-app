@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>Conflict badge color comparison</title>
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/400.css" />
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/600.css" />
+  <link rel="stylesheet" href="../../node_modules/@fontsource/inter/700.css" />
+  <link rel="stylesheet" href="../../src/styles/tokens.css" />
+  <link rel="stylesheet" href="../../src/styles/base.css" />
+  <link rel="stylesheet" href="../../src/styles/components.css" />
+  <link rel="stylesheet" href="../../src/styles/calendar.css" />
+  <style>
+    /* Mockup scaffold only. ?c=coral|red|amber picks the conflict color; ?theme=light is a HYPOTHETICAL light
+       backdrop (the app has no light theme yet) to see how each badge sits on a light page. */
+    body { padding: 16px; } h2 { margin: 0 0 12px; font-size: 16px; }
+    .row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; align-items: flex-start; }
+    .cell { font-size: 12px; color: var(--color-muted); } .col { position: relative; background: var(--color-surface); padding: 4px; border-radius: 8px; }
+    .col .fc-event { position: relative; display: block; margin: 0; }
+    html[data-theme='light'] { --color-bg: #F4F1FF; --color-surface: #FFFFFF; --color-text: #1B1533; --color-muted: #5B5380; --color-border: rgba(20,16,42,.14); }
+  </style></head>
+<body><h2 id="h"></h2><div class="fc" id="root"></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const c = q.get('c') || 'coral', theme = q.get('theme') || 'dark';
+  if (c !== 'coral') document.documentElement.setAttribute('data-conflict-color', c);
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('h').textContent = `Conflict color: ${c}, ${theme} page`;
+  const icon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v4" stroke-linecap="round"/><circle cx="8" cy="11" r=".6" fill="currentColor"/></svg>';
+  const badge = (ignored) => `<button class="conflict-badge${ignored ? ' conflict-badge--ignored' : ''}" type="button" aria-label="Conflict">${icon}${ignored ? 'Ignored' : 'Conflict'}</button>`;
+  const colors = { 'royal (default)': '#4A63F0', indigo: '#3B4FD6', violet: '#7B5CD6', 'deep violet': '#5B3FC4', sky: '#2F8FD6', periwinkle: '#6C7DF5' };
+  const root = document.getElementById('root');
+  const addRow = (label, h, w, make) => {
+    const row = document.createElement('div'); row.className = 'row';
+    for (const [name, bg] of Object.entries(colors)) {
+      const cell = document.createElement('div'); cell.className = 'cell';
+      cell.innerHTML = `${label}: ${name}<div class="col" style="width:${w}px"><div class="fc-timegrid-event fc-event cal-event cal-event--conflict" style="height:${h}px;background-color:${bg}"><div class="fc-event-main">${make()}</div></div></div>`;
+      row.appendChild(cell);
+    }
+    root.appendChild(row);
+  };
+  addRow('60 min, full badge', 80, 150, () => `<div><div class="fc-event-time">1:00 - 2:00</div><div class="fc-event-title">Lunch</div>${badge()}</div>`);
+  addRow('30 min, compact badge', 40, 150, () => `<div>${badge()}<div class="fc-event-time">1:00 - 1:30</div><div class="fc-event-title">Stand-up</div></div>`);
+  addRow('30 min narrow, icon only', 40, 100, () => `<div>${badge()}<div class="fc-event-title">Stand-up</div></div>`);
+</script></body></html>

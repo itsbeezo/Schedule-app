@@ -623,6 +623,20 @@ describe('saved time zone drives the grid', () => {
   });
 });
 
+describe('event tooltip follows the saved zone', () => {
+  afterEach(() => { delete (window as any).__dropStr; });
+  test('title is re-rendered in the new zone after the time zone changes', async () => {
+    mocked.getSettings.mockResolvedValue({ timezone: 'Asia/Tokyo' });
+    renderView();
+    const evt = await screen.findByTestId('event-e1');
+    await waitFor(() => expect(evt.title).toContain('7:00'));
+    mocked.getSettings.mockResolvedValue({ timezone: 'America/New_York' });
+    mocked.updateEvent.mockResolvedValue(ev());
+    await userEvent.click(screen.getByRole('button', { name: /drag planning/i }));
+    await waitFor(() => expect(screen.getByTestId('event-e1').title).toContain('6:00'));
+  });
+});
+
 describe('month view crowding', () => {
   test('month view caps events per day and shows "+N more" with a dated accessible name', () => {
     expect(CALENDAR_OPTIONS.views).toEqual({ dayGridMonth: { dayMaxEvents: 3 } });

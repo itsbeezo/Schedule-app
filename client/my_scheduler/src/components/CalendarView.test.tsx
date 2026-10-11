@@ -586,3 +586,31 @@ describe('conflict popover anchors to the event block, not the badge', () => {
     expect(pop).toHaveStyle({ top: `${700 - 4 - 100}px`, left: '120px' });
   });
 });
+
+describe('saved time zone drives the grid', () => {
+  afterEach(() => { delete (window as any).__selectStr; delete (window as any).__dropStr; });
+
+  test.each(['Asia/Tokyo', 'America/New_York'])('timeZone prop, create/drag ISO output and dialog wall clock in %s', async (tz) => {
+    mocked.getSettings.mockResolvedValue({ timezone: tz });
+    renderView();
+    await screen.findByText('Planning');
+    await waitFor(() => expect(screen.getByTestId('calendar')).toHaveAttribute('data-time-zone', tz));
+    const off = tz === 'Asia/Tokyo' ? '+09:00' : '-04:00';
+    (window as any).__selectStr = { startStr: `2026-10-06T09:00:00${off}`, endStr: `2026-10-06T10:00:00${off}` };
+    await userEvent.click(screen.getByText('mock-select'));
+    await userEvent.click(within(screen.getByRole('toolbar')).getByRole('button', { name: /add event/i }));
+    expect(screen.getByLabelText(/^start/i)).toHaveValue('2026-10-06T09:00');
+    expect(screen.getByLabelText(/^end/i)).toHaveValue('2026-10-06T10:00');
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    // editing the 10:00Z event shows it in the saved zone
+    await userEvent.click(screen.getByRole('button', { name: /open planning/i }));
+    expect(screen.getByLabelText(/^start/i)).toHaveValue(tz === 'Asia/Tokyo' ? '2026-10-06T19:00' : '2026-10-06T06:00');
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    // dragging persists the instant from the ISO string
+    mocked.updateEvent.mockResolvedValue(ev());
+    (window as any).__dropStr = { startStr: `2026-10-06T09:15:00${off}`, endStr: `2026-10-06T10:15:00${off}` };
+    await userEvent.click(screen.getByRole('button', { name: /drag planning/i }));
+    const utc = tz === 'Asia/Tokyo' ? ['2026-10-06T00:15:00.000Z', '2026-10-06T01:15:00.000Z'] : ['2026-10-06T13:15:00.000Z', '2026-10-06T14:15:00.000Z'];
+    await waitFor(() => expect(mocked.updateEvent).toHaveBeenCalledWith('e1', { start_at: utc[0], end_at: utc[1] }));
+  });
+});

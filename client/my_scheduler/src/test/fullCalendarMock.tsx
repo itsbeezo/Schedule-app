@@ -5,7 +5,7 @@ type Info = Record<string, any>;
 export interface MockCalendarProps {
   events?: Info[];
   datesSet?: (arg: { start: Date; end: Date; view?: { currentStart: Date; type?: string } }) => void;
-  select?: (arg: { start: Date; end: Date }) => void;
+  select?: (arg: { start: Date; end: Date; startStr?: string; endStr?: string }) => void;
   eventClick?: (arg: Info) => void;
   eventDrop?: (arg: Info) => void;
   eventResize?: (arg: Info) => void;
@@ -58,7 +58,7 @@ const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawP
   }, []);
   const visible = (props.events ?? []).filter((e) => e.display !== 'background');
   return (
-    <div data-testid="calendar" data-initial-view={props.initialView as string | undefined} data-view={view} data-height={String(props.height)}
+    <div data-testid="calendar" data-initial-view={props.initialView as string | undefined} data-view={view} data-time-zone={props.timeZone as string | undefined} data-height={String(props.height)}
       data-toolbar-right={props.headerToolbar ? (props.headerToolbar as Info).right : undefined}
       data-toolbar={props.headerToolbar === false ? 'off' : 'on'}
       data-scroll-time={props.scrollTime as string | undefined}
@@ -77,7 +77,7 @@ const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawP
               onClick={() => {
                 const start = new Date(new Date(e.start).getTime() + 3600000);
                 const end = new Date(new Date(e.end).getTime() + 3600000);
-                props.eventDrop?.({ event: { ...info.event, start, end }, revert: (window as any).__revert ?? (() => {}) });
+                props.eventDrop?.({ event: { ...info.event, start, end, ...((window as any).__dropStr ? { startStr: (window as any).__dropStr.startStr, endStr: (window as any).__dropStr.endStr } : {}) }, revert: (window as any).__revert ?? (() => {}) });
               }}
             >
               drag {e.title}
@@ -86,7 +86,10 @@ const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawP
         );
       })}
       <button
-        onClick={() => props.select?.({ start: new Date(2026, 9, 6, 9, 0), end: new Date(2026, 9, 6, 10, 0) })}
+        onClick={() => props.select?.({
+          start: new Date(2026, 9, 6, 9, 0), end: new Date(2026, 9, 6, 10, 0),
+          ...((window as any).__selectStr ?? {}),
+        })}
       >
         mock-select
       </button>

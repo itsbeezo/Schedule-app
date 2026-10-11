@@ -193,10 +193,11 @@ describe('time zone field', () => {
     await waitFor(() => expect(screen.getByLabelText('Time zone', { selector: 'input' })).toHaveValue(device));
   });
 
-  test('notes that the grid still uses the device zone when the saved zone differs', async () => {
+  test('no longer claims the grid uses the device zone, even when the saved zone differs', async () => {
     mocked.getSettings.mockResolvedValue({ timezone: device === 'Asia/Tokyo' ? 'Europe/Paris' : 'Asia/Tokyo' });
     setup();
-    expect(await screen.findByText('Calendar grid still shows times in this device\'s time zone.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Time zone', { selector: 'input' })).not.toHaveValue(''));
+    expect(screen.queryByText(/grid still shows/i)).toBeNull();
   });
 
   test('no note when the saved zone is the device zone', async () => {

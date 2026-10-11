@@ -3,6 +3,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import luxon3Plugin from '@fullcalendar/luxon3';
 import type { CalendarOptions } from '@fullcalendar/core';
 import { ApiEvent, EventInput } from '../api/types';
 import * as api from '../api/client';
@@ -23,9 +24,10 @@ import { ConflictInfo, eventConflictState, indexConflicts } from '../lib/conflic
 import { workHoursToBackground } from '../lib/workHoursBand';
 import { zonesToBackground } from '../lib/zoneBand';
 import { readableTextOn } from '../styles/contrast';
+import { civilLocalDate, dateOnlyString, formatTimeIn, nextHourIn, todayIn } from '../lib/timezone';
 
 export const CALENDAR_OPTIONS: CalendarOptions = {
-  plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+  plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, luxon3Plugin],
   initialView: 'timeGridWeek',
   headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridDay,timeGridWeek,dayGridMonth' },
   allDaySlot: false,
@@ -65,11 +67,18 @@ const SHORT_EVENT_MS = 30 * 60 * 1000;
 const TIME_FMT: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
 
 /** "Title, 9:00 AM\u201310:30 AM": the full text for event blocks too narrow to show it. */
-export function describeEvent(title: string, start: Date | null, end: Date | null): string {
+export function describeEvent(title: string, start: Date | null, end: Date | null, timeZone?: string): string {
   if (!start) return title;
-  const from = start.toLocaleTimeString([], TIME_FMT);
-  return end ? `${title}, ${from}\u2013${end.toLocaleTimeString([], TIME_FMT)}` : `${title}, ${from}`;
+  const fmt = (d: Date) => (timeZone ? formatTimeIn(d, timeZone) : d.toLocaleTimeString([], TIME_FMT));
+  const from = fmt(start);
+  return end ? `${title}, ${from}\u2013${fmt(end)}` : `${title}, ${from}`;
 }
+
+/** An instant from FullCalendar's ISO string (which carries the zone offset); falls back to the Date it gave. */
+export const instantOf = (iso: string | undefined, fallback: Date): Date => {
+  const d = iso ? new Date(iso) : fallback;
+  return Number.isNaN(d.getTime()) ? fallback : d;
+};
 
 export function toFullCalendarEvent(e: ApiEvent) {
   return {
@@ -120,7 +129,7 @@ export default function CalendarView() {
     () => (narrow ? false : { ...(CALENDAR_OPTIONS.headerToolbar as object), right: WIDE_TOOLBAR_RIGHT }),
     [narrow]
   );
-  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [currentDate, setCurrentDate] = useState(() => todayIn(data.timezone));
   const gridRef = useRef<HTMLDivElement>(null);
   const calApi = () => calendarRef.current?.getApi();
   useSwipe(gridRef, {
@@ -168,7 +177,7 @@ export default function CalendarView() {
         const extra = state === 'active' ? ['cal-event--conflict'] : state === 'ignored' ? ['cal-event--ignored'] : [];
         return { ...fc, classNames: [...fc.classNames, ...extra] };
       }),
-      // Bands use the saved time zone; the grid itself still renders in the browser's zone (see lib/timezone.ts).
+      // Bands and the grid both use the saved time zone (FullCalendar's timeZone prop below).
       ...(data.range ? workHoursToBackground(data.workHours, data.range.from, data.range.to, data.timezone) : []),
       ...(data.range ? zonesToBackground(data.zones, data.range.from, data.range.to, data.timezone) : []),
     ],
@@ -195,9 +204,7 @@ export default function CalendarView() {
   }
 
   function openNewEvent() {
-    const start = new Date();
-    start.setMinutes(0, 0, 0);
-    start.setHours(start.getHours() + 1);
+    const start = nextHourIn(data.timezone);
     setDraft({ mode: 'create', value: newDraft(start, new Date(start.getTime() + 30 * 60 * 1000)) });
   }
 
@@ -238,12 +245,13 @@ export default function CalendarView() {
         </div>
       )}
       {narrow && (
-        <MobileDateStrip selected={currentDate} onSelect={(d) => calApi()?.gotoDate(d)} onToday={() => calApi()?.today()} />
+        <MobileDateStrip selected={currentDate} today={todayIn(data.timezone)} onSelect={(d) => calApi()?.gotoDate(dateOnlyString(d))} onToday={() => calApi()?.today()} />
       )}
       <div ref={gridRef} className={narrow ? 'calendar-grid calendar-grid--day' : 'calendar-grid'}>
       <FullCalendar
         ref={calendarRef}
         {...CALENDAR_OPTIONS}
+        timeZone={data.timezone}
         {...(narrow ? { height: NARROW_HEIGHT } : {})}
         initialView={narrow ? NARROW_INITIAL_VIEW : 'timeGridWeek'}
         headerToolbar={headerToolbar}
@@ -252,14 +260,14 @@ export default function CalendarView() {
         datesSet={(arg) => {
           if (!narrowRef.current && arg.view?.type) lastWideView.current = arg.view.type;
           data.setRange({ from: arg.start, to: arg.end });
-          setCurrentDate(arg.view?.currentStart ?? arg.start);
+          setCurrentDate(civilLocalDate(arg.view?.currentStart ?? arg.start, data.timezone));
         }}
-        select={(arg) => setSelection({ start: arg.start, end: arg.end })}
+        select={(arg) => setSelection({ start: instantOf(arg.startStr, arg.start), end: instantOf(arg.endStr, arg.end) })}
         eventDrop={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventResize={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventDidMount={(arg) => {
           if (arg.event.display === 'background' || !arg.event.title) return;
-          arg.el.title = describeEvent(arg.event.title, arg.event.start, arg.event.end);
+          arg.el.title = describeEvent(arg.event.title, arg.event.start, arg.event.end, data.timezone);
         }}
         eventContent={(arg) => {
           const infos = conflictIndex.get(arg.event.id);
@@ -333,6 +341,7 @@ export default function CalendarView() {
       )}
       {draft && (
         <EventDialog
+          timeZone={data.timezone}
           mode={draft.mode}
           initial={draft.value}
           onSave={save}

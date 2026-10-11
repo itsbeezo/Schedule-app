@@ -230,3 +230,31 @@ describe('start change keeps the duration', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled());
   });
 });
+
+describe.each([
+  ['Asia/Tokyo', '2026-10-06T00:00:00.000Z', '2026-10-06T09:00', '2026-10-06T01:30:00.000Z', '2026-10-06T10:30'],
+  ['America/New_York', '2026-10-06T13:00:00.000Z', '2026-10-06T09:00', '2026-10-06T14:30:00.000Z', '2026-10-06T10:30'],
+  ['America/New_York', '2026-03-08T06:00:00.000Z', '2026-03-08T01:00', '2026-03-08T07:30:00.000Z', '2026-03-08T03:30'], // spring-forward
+])('saved zone %s', (tz, startIso, startInput, endIso, endInput) => {
+  test('shows wall clock in the saved zone and saves the matching UTC instants', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    render(
+      <EventDialog mode="edit" timeZone={tz} onSave={onSave} onClose={jest.fn()}
+        initial={{ id: 'e1', title: 'Zoned', start: new Date(startIso), end: new Date(endIso), kind: 'event', color: null, notes: null }} />
+    );
+    expect(screen.getByLabelText(/^start/i)).toHaveValue(startInput);
+    expect(screen.getByLabelText(/^end/i)).toHaveValue(endInput);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0]).toMatchObject({ start_at: startIso, end_at: endIso });
+  });
+
+  test('moving the start shifts the end by the same elapsed time', async () => {
+    render(
+      <EventDialog mode="create" timeZone={tz} onSave={jest.fn()} onClose={jest.fn()}
+        initial={{ title: '', start: new Date(startIso), end: new Date(endIso), kind: 'event', color: null, notes: null }} />
+    );
+    fireEvent.change(screen.getByLabelText(/^start/i), { target: { value: '2026-10-07T12:00' } });
+    expect(screen.getByLabelText(/^end/i)).toHaveValue('2026-10-07T13:30');
+  });
+});

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import CalendarView, { CALENDAR_OPTIONS, describeEvent, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
-import { optionIdentities, scrollToTimeCalls } from '../test/fullCalendarMock';
+import { navCalls, optionIdentities, scrollToTimeCalls } from '../test/fullCalendarMock';
 
 jest.mock('@fullcalendar/react', () => ({ __esModule: true, default: require('../test/fullCalendarMock').default }));
 jest.mock('../api/client');
@@ -181,12 +181,61 @@ describe('narrow (phone) default view', () => {
     expect(isNarrowViewport((() => { throw new Error('x'); }) as any)).toBe(false);
   });
 
-  test('narrow starts on the 3-day view with a toolbar offering 3 day, Day and Month', async () => {
+  test('narrow starts on a single-day grid, hides the FullCalendar toolbar and shows the date strip', async () => {
     (window as any).matchMedia = mm(true);
     renderView();
     const cal = await screen.findByTestId('calendar');
-    expect(cal).toHaveAttribute('data-initial-view', 'timeGrid3Day');
-    expect(cal).toHaveAttribute('data-toolbar-right', 'timeGridDay,timeGrid3Day,timeGridWeek,dayGridMonth');
+    expect(cal).toHaveAttribute('data-initial-view', 'timeGridDay');
+    expect(cal).toHaveAttribute('data-toolbar', 'off');
+    expect(screen.getByRole('group', { name: 'This week' })).toBeInTheDocument();
+  });
+
+  test('wide has no date strip', async () => {
+    (window as any).matchMedia = mm(false);
+    renderView();
+    await screen.findByTestId('calendar');
+    expect(screen.queryByRole('group', { name: 'This week' })).toBeNull();
+    expect(screen.getByTestId('calendar')).toHaveAttribute('data-toolbar', 'on');
+  });
+
+  test('tapping a date in the strip and the picker jumps the calendar and loads that day', async () => {
+    (window as any).matchMedia = mm(true);
+    renderView();
+    await screen.findByTestId('calendar');
+    navCalls.length = 0;
+    await userEvent.click(screen.getByRole('button', { name: /choose date picker/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Tuesday, November 10, 2026' }));
+    expect(navCalls).toEqual(['gotoDate:2026-11-10']);
+    await waitFor(() => expect(mocked.listEvents).toHaveBeenLastCalledWith(new Date(2026, 10, 10), new Date(2026, 10, 11)));
+    expect(screen.getByRole('button', { name: /November 2026/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Today' }));
+    expect(navCalls).toContain('today');
+  });
+
+  test('swiping the grid changes day, but not from an event block or while dragging', async () => {
+    (window as any).matchMedia = mm(true);
+    renderView();
+    const cal = await screen.findByTestId('calendar');
+    navCalls.length = 0;
+    const end = (x: number) => ({ touches: [], changedTouches: [{ clientX: x, clientY: 100 }] });
+    const start = { touches: [{ clientX: 300, clientY: 100 }] };
+    fireEvent.touchStart(cal, start);
+    fireEvent.touchEnd(cal, end(100));
+    fireEvent.touchStart(cal, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchEnd(cal, end(300));
+    expect(navCalls).toEqual(['next', 'prev']);
+    navCalls.length = 0;
+    const evt = await screen.findByTestId('event-e1');
+    fireEvent.touchStart(evt, start);
+    fireEvent.touchEnd(evt, end(100));
+    expect(navCalls).toEqual([]);
+    const dragging = document.createElement('div');
+    dragging.className = 'fc-event-dragging';
+    cal.appendChild(dragging);
+    fireEvent.touchStart(cal, start);
+    fireEvent.touchEnd(cal, end(100));
+    expect(navCalls).toEqual([]);
   });
 
   test('wide (or no matchMedia) starts on the week with the unchanged toolbar', async () => {
@@ -202,14 +251,9 @@ describe('narrow (phone) default view', () => {
     expect(cal).toHaveAttribute('data-initial-view', 'timeGridWeek');
   });
 
-  test('the 3-day view is a 3-day time grid that inherits snapping, height and scroll settings', () => {
-    const v = (CALENDAR_OPTIONS.views as any).timeGrid3Day;
-    expect(v).toMatchObject({ type: 'timeGrid', duration: { days: 3 }, buttonText: '3 day' });
-    for (const k of ['snapDuration', 'scrollTime', 'scrollTimeReset', 'height', 'editable', 'selectable', 'slotDuration']) {
-      expect(v).not.toHaveProperty(k);
-    }
+  test('there is no 3-day view any more', () => {
+    expect(CALENDAR_OPTIONS.views).toBeUndefined();
     expect(CALENDAR_OPTIONS.snapDuration).toBe('00:15:00');
-    expect(CALENDAR_OPTIONS.height).toMatch(/100vh/);
   });
 });
 

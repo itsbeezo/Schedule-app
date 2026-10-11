@@ -167,3 +167,66 @@ test('focus returns to the previously focused element on close', async () => {
   await userEvent.keyboard('{Escape}');
   expect(screen.getByRole('button', { name: 'trigger' })).toHaveFocus();
 });
+
+describe('start change keeps the duration', () => {
+  const startEl = () => screen.getByLabelText(/^start/i) as HTMLInputElement;
+  const endEl = () => screen.getByLabelText(/^end/i) as HTMLInputElement;
+  const thirty = { ...initial, start: new Date(2026, 9, 6, 15, 30), end: new Date(2026, 9, 6, 16, 0) };
+
+  test('30-minute event moved to 4:00 PM ends at 4:30 PM', () => {
+    setup({ initial: thirty });
+    setValue(startEl(), '2026-10-06T16:00');
+    expect(endEl().value).toBe('2026-10-06T16:30');
+  });
+
+  test('90-minute duration is preserved', () => {
+    setup({ initial: { ...initial, start: new Date(2026, 9, 6, 9, 0), end: new Date(2026, 9, 6, 10, 30) } });
+    setValue(startEl(), '2026-10-06T13:15');
+    expect(endEl().value).toBe('2026-10-06T14:45');
+  });
+
+  test('crosses midnight and day changes', () => {
+    setup({ initial: thirty });
+    setValue(startEl(), '2026-10-06T23:45');
+    expect(endEl().value).toBe('2026-10-07T00:15');
+    setValue(startEl(), '2026-10-08T10:00');
+    expect(endEl().value).toBe('2026-10-08T10:30');
+  });
+
+  test('start moved later than the old end still shifts the end', () => {
+    setup({ initial: thirty });
+    setValue(startEl(), '2026-10-06T20:00');
+    expect(endEl().value).toBe('2026-10-06T20:30');
+  });
+
+  test('invalid previous duration leaves the end untouched', () => {
+    setup({ initial: thirty });
+    setValue(endEl(), '2026-10-06T15:00');
+    setValue(startEl(), '2026-10-06T17:00');
+    expect(endEl().value).toBe('2026-10-06T15:00');
+    setValue(endEl(), '');
+    setValue(startEl(), '2026-10-06T18:00');
+    expect(endEl().value).toBe('');
+  });
+
+  test('end-only change does not move start and sets the new duration', () => {
+    setup({ initial: thirty });
+    setValue(endEl(), '2026-10-06T17:30');
+    expect(startEl().value).toBe('2026-10-06T15:30');
+    setValue(startEl(), '2026-10-06T14:00');
+    expect(endEl().value).toBe('2026-10-06T16:00');
+  });
+
+  test('works in edit mode and saves the shifted ISO times', async () => {
+    const props = setup({ mode: 'edit', initial: { ...thirty, id: 'e1', title: 'T' } });
+    setValue(startEl(), '2026-10-06T16:00');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    expect(props.onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start_at: new Date(2026, 9, 6, 16, 0).toISOString(), end_at: new Date(2026, 9, 6, 16, 30).toISOString(),
+      }),
+      'e1'
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled());
+  });
+});

@@ -77,6 +77,17 @@ export default function EventDialog({ mode, initial, onSave, onDelete, onClose }
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // Changing the start moves the end by the same absolute amount, but only when the previous interval was valid.
+  function changeStart(value: string) {
+    const prevStart = new Date(start).getTime();
+    const prevEnd = new Date(end).getTime();
+    const nextStart = new Date(value).getTime();
+    if (!Number.isNaN(prevStart) && !Number.isNaN(prevEnd) && prevEnd > prevStart && !Number.isNaN(nextStart)) {
+      setEnd(toLocalInput(new Date(nextStart + (prevEnd - prevStart))));
+    }
+    setStart(value);
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = title.trim();
@@ -131,7 +142,7 @@ export default function EventDialog({ mode, initial, onSave, onDelete, onClose }
 
         <div className="field">
           <label className="field__label" htmlFor="ev-start">Start</label>
-          <input id="ev-start" type="datetime-local" className="field__input" value={start} onChange={(e) => setStart(e.target.value)} />
+          <input id="ev-start" type="datetime-local" className="field__input" value={start} onChange={(e) => changeStart(e.target.value)} />
         </div>
         <div className="field">
           <label className="field__label" htmlFor="ev-end">End</label>

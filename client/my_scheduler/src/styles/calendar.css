@@ -82,6 +82,8 @@
   outline: 2px dashed var(--color-muted); outline-offset: -2px;
 }
 .fc .fc-event.cal-event--ignored .fc-event-main { color: var(--color-muted); }
+/* title stays at full text color on the calm fill (13:1); time and badge are the quiet parts */
+.fc .fc-event.cal-event--ignored .fc-event-title { color: var(--color-text); }
 
 .fc .fc-bg-event.cal-work-hours { opacity: 1; background: var(--color-work-hours) !important; border: 0 !important; border-radius: var(--radius-event); }
 .fc .fc-bg-event.cal-zone {
@@ -114,3 +116,8 @@
   .fc .fc-daygrid-event, .fc .fc-daygrid-event > div { min-width: 0; overflow: hidden; }
   .fc .fc-daygrid-event .conflict-badge { font-size: 0; gap: 0; padding: 2px 3px; flex: none; }
 }
+
+/* Month chips: badge always after the title (the component puts it first on half-hour events) */
+.fc .fc-daygrid-event > div { display: flex; flex-direction: column; align-items: flex-start; }
+.fc .fc-daygrid-event > div > .conflict-badge { order: 3; }
+.fc .fc-daygrid-event .fc-event-title { max-width: 100%; }

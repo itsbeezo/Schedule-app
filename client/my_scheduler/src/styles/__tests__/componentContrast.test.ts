@@ -38,6 +38,8 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-light-blue', '--color-surface', UI, 'zone dashed border, time-block edge'],
   ['--color-light-blue', '--color-royal', UI, 'time-block edge against its event'],
   ['--color-text', '--color-raised', TEXT, '.cal-event--ignored text on its calm fill'],
+  ['--color-text', '--color-surface', TEXT, 'allowed/ignored event title on its actual surface fill'],
+  ['--color-muted', '--color-surface', TEXT, 'allowed/ignored event time and badge text on the surface fill'],
   ['--color-muted', '--color-raised', UI, 'ignored dashed outline on its own fill'],
   ['--color-muted', '--color-surface', UI, 'ignored dashed outline against the grid'],
   ['--color-text', '--color-raised', UI, 'selected swatch ring'],

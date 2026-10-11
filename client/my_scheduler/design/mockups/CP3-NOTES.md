@@ -18,3 +18,33 @@ The real event markup (frontend `eventContent`) is `.fc-event-main > div > .fc-e
 - `.selection-toolbar` at <=600px: full-width card (`left/right: var(--space-1)`, `transform: none`, card radius instead of the pill, which turned into a blob when wrapped). Rows via `order`: "Mark as unconflicted zone" (full width), "Repeat weekly" (full width, 44px), then Add event and Cancel side by side. Buttons are 44px tall. The checkbox is 20px with the mint accent; label min-height 32px (44px on phones). `order` and `flex-basis` are used because the markup is Add, Mark, label, Cancel and cannot be changed from CSS.
 - Toast: both toast and toolbar were fixed at the bottom centre, so the toast covered the toolbar. Using `body:has(.selection-toolbar) .toast` the toast now sits above the toolbar: desktop `bottom: space-3 + 72px`; phones `bottom: 100px` (Add/Cancel only) or `204px` (when the zone controls with `.field__label` are shown), and full width. The offsets are fixed numbers matching the toolbar's heights (84px and about 180px); if the toolbar gains a row, update them. A cleaner fix would be a shared bottom stack container from the frontend.
 - No new color pairs.
+
+## Task 17: conflicts, popover, settings (final CP3 pass)
+Verified live (client from this worktree on :3170, clock fixed to Wed 10/7 09:50 UTC): week at 1280/768, 3-day and month at 390, month at 1280, popover (active and allowed) at 1280/768/390, settings top and scrolled at 1280/768/390, dialog at 1280/768/390. Screenshots: app-*, t17-*.
+
+Non-variable overrides added:
+- `.app-title { margin: 0 auto 0 0 }`: header now has three items (title, Add event, Settings); the title stays left and the buttons group right instead of Add event floating in the middle.
+- Settings panel: `.settings { box-shadow }`, `.settings h3` (18px/600), a hairline between sections, `.settings fieldset { margin ... !important }`. `!important` is used because WorkHoursEditor sets `border/padding/margin` inline on the fieldset, and `flex-wrap: wrap`, `gap` and `margin-bottom` inline on each range row.
+- Work-hour rows: `.settings fieldset > div { flex-wrap: nowrap !important }` with inputs `flex: 1 1 0; min-width: 0` and Remove `flex: none`, so start / to / end / Remove stay on one line at 390px (inputs ~115px). The native time-picker icon is hidden at <=600px to make room (the field remains editable by keyboard and touch).
+- Zone and allowed-overlap rows (`div[style*='space-between']`, the component's inline style): hairline separators, `white-space: nowrap` on their buttons.
+- `.settings input[type=color]` shares the dialog's compact style (it was a white native box); `.settings` gets `color-scheme: dark` for the time inputs.
+- Phone targets: Settings buttons, time inputs and popover buttons are 44px tall at <=600px.
+- Popover width is `min(340px, 100vw - 16px)` so Ignore this once and Allow overlap fit in one row at 768/1280; positioned by the component (clamped inside the viewport; verified not clipped at 390).
+- Month chips: `.fc-daygrid-event > div` is a flex column and `.conflict-badge { order: 3 }`: the component renders the badge BEFORE the time on half-hour events (Standup) and after the title on others (Review); the badge is now always last in month, matching week.
+- Toast stack offsets are now variables `--stack-short` / `--stack-tall` in components.css. Still fixed numbers (CSS cannot measure the toolbar); update them if the toolbar gains a row.
+
+Contrast: no new color pairs (tokens only; all pairs already in componentContrast.test.ts).
+
+Known limits / frontend requests:
+- Month view shows no zone ("Conflicts off") band or work-hours band: no `.fc-bg-event` elements are rendered in dayGrid. If zones should show in month, the frontend needs to emit them (or a cell tint). Week and 3-day show the zone band (verified live on Fri).
+- The ignored-with-custom-color and coral/ring combinations remain verified by injected classes only (no demo event has a custom color except the owner's green one, which shows the conflict outline correctly).
+- Allowed state (Standup/Review) badges at ~100px columns are icon-only; the label is in aria-label. Very narrow overlapping blocks (about 45px) still truncate titles.
+- A shared bottom-stack container (toast above toolbar) from the frontend would replace the two fixed offsets.
+- Task 17 popover focus ring is the base mint box-shadow (visible on the first button on open).
+
+## Task 17 fix round 1
+- Popover: the component positions it with inline `left/top` and clamps with a 316px assumption. Desktop width is back to 300px (fits that assumption; buttons use 12px padding so both stay on one row). At <=600px `.popover { left: 8px !important; right: 8px; width: auto }` pins an 8px inset on both sides (verified at 390: no longer flush right). The popover still opens below the BADGE, which sits inside the event, so it covers the lower part of the very block it describes. CSS cannot fix that (top is inline). FRONTEND REQUEST: anchor the popover to the event element's rect (bottom edge, or top edge when there is no room below, via `arg.el.getBoundingClientRect()`) instead of the badge rect, and clamp with the real popover width (or just read `offsetWidth`).
+- Allowed/ignored blocks, measured in the browser: fill rgb(30,24,64) (--color-surface), no inline style, opacity 1; title/time/badge text rgb(157,149,201) (--color-muted) = 5.9:1 on that fill (passes, but read as dim). The title now uses --color-text (13:1) and only the time and badge stay muted. Test rows added: text and muted on surface at 4.5:1.
+- Selected swatch: the component does set `.swatch--selected` (and on the Default pill when no color is stored). New `outline: 2px solid var(--color-text); outline-offset: 2px` ring on both, plus a check mark before "Default" when selected. In the settings screenshot only Default is selected because no default color is stored; a stored color shows the ring on its circle (not verified live to avoid writing a preference).
+- Sticky "Save work hours": tried `position: sticky; bottom`; at the top of the drawer it floated over the Friday row, so it was dropped.
+- FRONTEND REQUEST: the custom color `<input type="color">` in ColorPicker has no visible label (a lone swatch on its own row at 390). Add a visible "Custom" label (e.g. `<label>` wrapping the input) so it reads as part of the picker.

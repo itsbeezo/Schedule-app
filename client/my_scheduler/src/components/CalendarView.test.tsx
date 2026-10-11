@@ -462,3 +462,41 @@ test('re-rendering for popover, selection, dialog or settings state hands FullCa
   expect(optionIdentities.headerToolbar.size).toBe(1);
   expect(optionIdentities.views.size).toBe(1);
 });
+
+describe('conflict popover anchors to the event block, not the badge', () => {
+  const rect = (left: number, top: number, w: number, h: number) =>
+    ({ left, top, right: left + w, bottom: top + h, width: w, height: h, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+
+  async function openWith(eventRect: DOMRect, badgeRect: DOMRect) {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    const badge = screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0];
+    const wrapper = badge.closest('.fc-event') as HTMLElement;
+    expect(wrapper).not.toBeNull();
+    const spy = jest.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if (this === wrapper) return eventRect;
+      if (this === badge) return badgeRect;
+      return rect(0, 0, 0, 0);
+    });
+    jest.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('popover') ? 100 : 0;
+    });
+    await userEvent.click(badge);
+    spy.mockRestore();
+    return screen.getByRole('dialog', { name: /conflict options/i });
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  test('opens below the event block bottom edge', async () => {
+    const pop = await openWith(rect(120, 100, 200, 80), rect(130, 105, 20, 20));
+    expect(pop).toHaveStyle({ top: '184px', left: '120px' });
+  });
+
+  test('flips above the event block top edge when there is no room below', async () => {
+    const pop = await openWith(rect(120, 700, 200, 50), rect(130, 705, 20, 20));
+    expect(pop).toHaveStyle({ top: `${700 - 4 - 100}px`, left: '120px' });
+  });
+});

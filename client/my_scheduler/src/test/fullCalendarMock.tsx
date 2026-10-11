@@ -43,7 +43,7 @@ const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawP
         return (
           <div key={e.id} ref={(el) => { if (el) props.eventDidMount?.({ event: info.event, el }); }} data-testid={`event-${e.id}`} tabIndex={0}
             onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { props.eventClick?.({ ...info, jsEvent: ev.nativeEvent }); ev.preventDefault(); } }}
-            className={(e.classNames ?? []).join(' ')}>
+            className={["fc-event", ...(e.classNames ?? [])].join(" ")}>
             {props.eventContent ? props.eventContent(info) : e.title}
             <button onClick={() => props.eventClick?.(info)}>open {e.title}</button>
             <button

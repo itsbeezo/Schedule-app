@@ -12,3 +12,12 @@ Stylesheet: `src/styles/date-strip.css` (imported from `index.css`). Markup: `Mo
 - Tests: `styles/__tests__/dateStrip.test.ts`, contrast pairs in `componentContrast.test.ts`, class list in `classContract.test.ts`.
 - Screenshots (real build, mocked /api, 390 and 360, dark): `design/screenshots/phone-day-{collapsed,picker,selected-other,focus,badge}-{390,360}.png`. Script: `design/screenshot-phone.mjs`. Measured horizontal overflow: 0px at both widths, collapsed and expanded.
 - The phone page padding is 8px (components.css), so the strip uses 8px side padding/-8px margin to line up with the grid.
+
+## UX review round: compact strip, quiet Today, one month title
+
+Changes (CSS only; `styles/date-strip.css`, `styles/components.css`):
+
+- Vertical space. The first hour row of the grid now starts 156 CSS px from the top at 390 and 360 wide (was 191; measured with `design/measure-phone.mjs`, a 35px gain, so roughly 1.5 more rows). Note the earlier "~360" figure was the 2x screenshot's device pixels. How: the strip has no top padding and 4px below, its margin below is 4px, the phone app header sits 4px (was 16px) above it, weekday labels lost their padding, and the title and Today tap areas are still 44px but overhang by 4px instead of adding row height (the overhang lands in empty space above and on the non-interactive weekday labels below). Day circles stay 44px.
+- The picker's month title is visually hidden (clip technique, still in the DOM and `aria-live`), because the header title already shows the month. The prev/next buttons sit at the two ends of the row.
+- The month title pill no longer has a negative left margin, so its hover wash stays inside the 8px page gutter.
+- Today is a ghost text button: no fill, no border, light-blue text (4.5:1 on the page, asserted in `componentContrast.test.ts`), 44px target, hover wash, the token focus ring. The mint Add event button is the only filled action in the top area.

@@ -61,6 +61,7 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-purple', '--color-surface', UI, 'selected day disc against the picker card'],
   ['--color-light-blue', '--color-bg', UI, 'today ring against the page'],
   ['--color-light-blue', '--color-surface', UI, 'today ring against the picker card'],
+  ['--color-light-blue', '--color-bg', TEXT, 'ghost Today button text on the page'],
   ['--color-text', '--color-purple', UI, 'today+selected ring against the selected disc'],
 ];
 

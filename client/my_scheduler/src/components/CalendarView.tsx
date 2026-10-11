@@ -12,6 +12,8 @@ import SelectionToolbar from './SelectionToolbar';
 import { useToast } from './Toast';
 import { persistEventChange } from '../lib/eventChange';
 
+import { useSwipe } from '../hooks/useSwipe';
+import MobileDateStrip from './MobileDateStrip';
 import { useCalendarData } from '../hooks/useCalendarData';
 import ConflictBadge from './ConflictBadge';
 import ConflictPopover from './ConflictPopover';
@@ -38,12 +40,15 @@ export const CALENDAR_OPTIONS: CalendarOptions = {
   eventLongPressDelay: 400,
   selectLongPressDelay: 400,
   height: 'max(480px, calc(100vh - 12rem))',
-  views: { timeGrid3Day: { type: 'timeGrid', duration: { days: 3 }, buttonText: '3 day' } },
 };
 
 export const NARROW_QUERY = '(max-width: 600px)';
 const WIDE_TOOLBAR_RIGHT = 'timeGridDay,timeGridWeek,dayGridMonth';
-const NARROW_TOOLBAR_RIGHT = 'timeGridDay,timeGrid3Day,timeGridWeek,dayGridMonth';
+/** Phone: one day at a time; the MobileDateStrip replaces FullCalendar's toolbar. */
+export const NARROW_INITIAL_VIEW = 'timeGridDay';
+export const NARROW_HEIGHT = 'max(420px, calc(100vh - 15rem))';
+/** Elements FullCalendar adds while the user is dragging, resizing or selecting; swipes must not fire then. */
+const GESTURE_BUSY_SELECTOR = '.fc-event-dragging, .fc-event-resizing, .fc-event-mirror, .fc-highlight';
 
 export function isNarrowViewport(
   mm: ((q: string) => { matches: boolean }) | undefined = typeof window !== 'undefined' ? window.matchMedia?.bind(window) : undefined
@@ -85,9 +90,18 @@ export default function CalendarView() {
   const calendarRef = useRef<FullCalendar>(null);
   // Stable identity: a fresh object each render would make FullCalendar re-apply the option on every state change.
   const headerToolbar = useMemo(
-    () => ({ ...(CALENDAR_OPTIONS.headerToolbar as object), right: narrow ? NARROW_TOOLBAR_RIGHT : WIDE_TOOLBAR_RIGHT }),
+    () => (narrow ? false : { ...(CALENDAR_OPTIONS.headerToolbar as object), right: WIDE_TOOLBAR_RIGHT }),
     [narrow]
   );
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const gridRef = useRef<HTMLDivElement>(null);
+  const calApi = () => calendarRef.current?.getApi();
+  useSwipe(gridRef, {
+    enabled: narrow,
+    onSwipe: (dir) => (dir === 'next' ? calApi()?.next() : calApi()?.prev()),
+    ignoreStart: (t) => !!(t as Element | null)?.closest?.('.fc-event'),
+    isBusy: () => !!gridRef.current?.querySelector(GESTURE_BUSY_SELECTOR),
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [scrollTime, setScrollTimeState] = useState(() => getScrollTime());
   const [draft, setDraft] = useState<{ mode: 'create' | 'edit'; value: EventDraft } | null>(null);
@@ -195,14 +209,22 @@ export default function CalendarView() {
           </button>
         </div>
       )}
+      {narrow && (
+        <MobileDateStrip selected={currentDate} onSelect={(d) => calApi()?.gotoDate(d)} onToday={() => calApi()?.today()} />
+      )}
+      <div ref={gridRef} className={narrow ? 'calendar-grid calendar-grid--day' : 'calendar-grid'}>
       <FullCalendar
         ref={calendarRef}
         {...CALENDAR_OPTIONS}
-        initialView={narrow ? 'timeGrid3Day' : 'timeGridWeek'}
+        {...(narrow ? { height: NARROW_HEIGHT } : {})}
+        initialView={narrow ? NARROW_INITIAL_VIEW : 'timeGridWeek'}
         headerToolbar={headerToolbar}
         scrollTime={scrollTime}
         events={calendarEvents}
-        datesSet={(arg) => data.setRange({ from: arg.start, to: arg.end })}
+        datesSet={(arg) => {
+          data.setRange({ from: arg.start, to: arg.end });
+          setCurrentDate(arg.view?.currentStart ?? arg.start);
+        }}
         select={(arg) => setSelection({ start: arg.start, end: arg.end })}
         eventDrop={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventResize={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
@@ -246,6 +268,7 @@ export default function CalendarView() {
           });
         }}
       />
+      </div>
       {selection && (
         <SelectionToolbar
           range={selection}

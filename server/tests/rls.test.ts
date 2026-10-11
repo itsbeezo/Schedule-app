@@ -104,13 +104,14 @@ test('the pool keeps working after a failed transaction', async () => {
   expect(rows).toHaveLength(1);
 });
 
-test('ensureUser creates a user once and updates the timezone', async () => {
+test('ensureUser creates a user once and never overwrites a saved timezone', async () => {
   const NEW = '55555555-5555-4555-8555-555555555555';
   await ownerPool.query(`INSERT INTO users(id, timezone) VALUES ($1, 'UTC') ON CONFLICT DO NOTHING`, [NEW]);
+  await ownerPool.query(`UPDATE users SET timezone = 'Asia/Tokyo' WHERE id = $1`, [NEW]);
   await ensureUser(appPool, NEW, 'America/New_York');
-  await ensureUser(appPool, NEW, 'America/New_York');
+  await ensureUser(appPool, NEW, 'Europe/Paris');
   const { rows } = await ownerPool.query('SELECT timezone FROM users WHERE id = $1', [NEW]);
-  expect(rows).toEqual([{ timezone: 'America/New_York' }]);
+  expect(rows).toEqual([{ timezone: 'Asia/Tokyo' }]);
 });
 
 test('ensureUser works for an id that does not exist yet', async () => {

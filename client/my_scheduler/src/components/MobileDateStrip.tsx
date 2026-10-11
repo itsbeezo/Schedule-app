@@ -22,6 +22,9 @@ export default function MobileDateStrip({ selected, today = new Date(), onSelect
 
   useSwipe(weekRef, { onSwipe: (dir) => onSelect(addDays(selected, dir === 'next' ? 7 : -7)) });
 
+  const days = weekDays(selected);
+  const weekLabel = days.some((d) => isSameDay(d, today)) ? 'This week' : `Week of ${fullDateLabel(days[0])}`;
+
   function pick(d: Date) {
     onSelect(d);
     setOpen(false);
@@ -45,7 +48,7 @@ export default function MobileDateStrip({ selected, today = new Date(), onSelect
         <button ref={toggleRef} type="button" className="date-strip__title" aria-expanded={open} aria-controls="date-strip-picker"
           aria-label={`${monthTitle(selected)}, ${open ? 'close' : 'choose'} date picker`} onClick={() => setOpen((o) => !o)}>
           {monthTitle(selected)}
-          <span className="date-strip__chevron" aria-hidden="true">{open ? '▴' : '▾'}</span>
+          <span className="date-strip__chevron" aria-hidden="true">▾</span>
         </button>
         <button type="button" className="btn date-strip__today" onClick={() => { setOpen(false); onToday(); }}>Today</button>
       </div>
@@ -68,8 +71,8 @@ export default function MobileDateStrip({ selected, today = new Date(), onSelect
           </div>
         </div>
       ) : (
-        <div ref={weekRef} className="date-strip__week" role="group" aria-label="This week">
-          {weekDays(selected).map((d) => (
+        <div ref={weekRef} className="date-strip__week" role="group" aria-label={weekLabel}>
+          {days.map((d) => (
             <div key={d.getTime()} className="date-strip__cell">
               <span className="date-strip__dow" aria-hidden="true">{weekdayShort(d)}</span>
               {dayButton(d)}

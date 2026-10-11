@@ -10,7 +10,7 @@ const rule = (sel: string) => {
 };
 const px = (decl: string, prop: string) => parseInt(decl.match(new RegExp(`(?:^|[\\s;])${prop}:\\s*(\\d+)px`))![1], 10);
 
-test.each(['.date-strip__day', '.date-strip__title', '.date-strip__today'])('%s touch target is at least 44px', (sel) => {
+test.each(['.date-strip__day', '.date-strip__title', '.date-strip .btn.date-strip__today'])('%s touch target is at least 44px', (sel) => {
   const r = rule(sel);
   expect(px(r, sel === '.date-strip__day' ? 'height' : 'min-height')).toBeGreaterThanOrEqual(44);
   expect(px(r, sel === '.date-strip__day' ? 'width' : 'min-width')).toBeGreaterThanOrEqual(44);
@@ -47,4 +47,31 @@ test('the day header is visually hidden on the phone day view, not display:none 
   const m = css.match(/\.fc-timeGridDay-view \.fc-col-header-cell-cushion\s*\{([^}]*)\}/)![1];
   expect(m).toMatch(/clip/);
   expect(m).not.toMatch(/display:\s*none/);
+});
+
+test('the picker month title is visually hidden (clip), kept in the DOM, and not display:none', () => {
+  const r = rule('.date-strip__picker-title');
+  expect(r).toMatch(/clip/);
+  expect(r).not.toMatch(/display:\s*none/);
+});
+
+test('the month title pill stays inside the page gutter: no negative left margin', () => {
+  const r = rule('.date-strip__title');
+  expect(r).not.toMatch(/margin-left:\s*calc\(.*\* -1\)/);
+  expect(r).not.toMatch(/margin(-left)?:\s*-/);
+  expect(r).not.toMatch(/margin:\s*[^;]*\s-\d+px\s+(-\d+px|\d)/);
+});
+
+test('Today is a quiet ghost: transparent fill and border, token text color, 44px target, token focus ring', () => {
+  const r = rule('.date-strip .btn.date-strip__today');
+  expect(r).toMatch(/background:\s*transparent/);
+  expect(r).toMatch(/border-color:\s*transparent/);
+  expect(r).toMatch(/color:\s*var\(--color-light-blue\)/); // contrast pair light-blue on bg is asserted in componentContrast
+  expect(css).toMatch(/\.date-strip \.btn\.date-strip__today:focus-visible\s*\{[^}]*var\(--focus-ring\)/);
+});
+
+test('the strip is compact: no vertical padding above, 4px below, and title/Today tap areas overhang instead of adding height', () => {
+  const r = rule('.date-strip');
+  expect(r).toMatch(/padding:\s*0 var\(--space-1\) var\(--space-half\)/);
+  expect(rule('.date-strip__title')).toMatch(/margin:\s*calc\(var\(--space-half\) \* -1\) 0/);
 });

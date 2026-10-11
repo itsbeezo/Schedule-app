@@ -145,6 +145,7 @@ body:has(.selection-toolbar) .toast { bottom: calc(var(--space-3) + 72px); }
   .settings { width: 100%; border-radius: 0; }
   .dialog { padding: var(--space-2); }
   .app-shell { padding: var(--space-1); }
+  .app-header { gap: var(--space-1); margin-bottom: var(--space-half); }
 }
 
 .dialog, .settings { color-scheme: dark; }

@@ -1,14 +1,15 @@
 /* Phone (<= 600px) one-day view: compact date strip above the calendar grid. Markup: components/MobileDateStrip.tsx.
    Tokens only; no new colors. Interactive targets are 44px. */
 .date-strip {
-  position: sticky; top: 0; z-index: 20; margin: 0 calc(var(--space-1) * -1) var(--space-1);
-  padding: var(--space-half) var(--space-1) var(--space-1);
+  position: sticky; top: 0; z-index: 20; margin: 0 calc(var(--space-1) * -1) var(--space-half);
+  padding: 0 var(--space-1) var(--space-half);
   background: var(--color-bg); border-bottom: 1px solid var(--color-border);
 }
 .date-strip__header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); }
+/* Tap areas stay 44px but the row only takes 36px: the 4px overhang is empty space above and the weekday labels below. */
 .date-strip__title {
   display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; min-width: 44px; padding: 0 var(--space-1);
-  margin-left: calc(var(--space-1) * -1); border: 0; border-radius: var(--radius-pill); background: transparent;
+  margin: calc(var(--space-half) * -1) 0; border: 0; border-radius: var(--radius-pill); background: transparent;
   color: var(--color-text); font-size: var(--text-lg); font-weight: 600; cursor: pointer;
   transition: background var(--motion-fast) var(--motion-ease);
 }
@@ -17,11 +18,19 @@
 .date-strip__chevron { display: inline-block; font-size: var(--text-md); color: var(--color-muted); transition: transform var(--motion-fast) var(--motion-ease); }
 /* the component swaps the glyph too; the rotation keeps it smooth and works with either glyph */
 .date-strip__title[aria-expanded='true'] .date-strip__chevron { transform: rotate(180deg); }
-.date-strip__today { min-height: 44px; min-width: 44px; }
+/* Today is a quiet text button (no fill, no border) so it does not compete with the mint Add event button. The 44px
+   tap area is kept; the hover wash and the focus ring show where it is. */
+.date-strip .btn.date-strip__today {
+  min-height: 44px; min-width: 44px; margin: calc(var(--space-half) * -1) 0; padding: 0 var(--space-1);
+  background: transparent; border-color: transparent; color: var(--color-light-blue); font-weight: 600;
+}
+.date-strip .btn.date-strip__today:hover { background: var(--color-hover); }
+.date-strip .btn.date-strip__today:active { background: var(--color-purple-soft); }
+.date-strip .btn.date-strip__today:focus-visible { box-shadow: var(--focus-ring); }
 
 .date-strip__week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; touch-action: pan-y; }
 .date-strip__cell { display: flex; flex-direction: column; align-items: center; min-width: 0; }
-.date-strip__dow { font-size: var(--text-sm); font-weight: 600; color: var(--color-muted); line-height: 1.2; text-align: center; padding-bottom: 2px; }
+.date-strip__dow { font-size: var(--text-sm); font-weight: 600; color: var(--color-muted); line-height: 1.1; text-align: center; padding-bottom: 0; }
 
 .date-strip__day {
   position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; max-width: 100%; padding: 0;
@@ -55,7 +64,12 @@
 }
 .date-strip__picker-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); }
 .date-strip__picker-nav .btn { min-height: 44px; min-width: 44px; padding: 0; font-size: var(--text-lg); }
-.date-strip__picker-title { font-weight: 600; font-size: var(--text-md); text-align: center; flex: 1; }
+/* The header title already names the month, so the picker's copy is visually hidden (clip technique) but stays in the
+   DOM as the aria-live announcement when paging. The nav buttons sit at the two ends of the row. */
+.date-strip__picker-title {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
 .date-strip__dow-row, .date-strip__row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); justify-items: center; }
 .date-strip__dow-row { margin-top: var(--space-half); }
 .date-strip__month { display: flex; flex-direction: column; }

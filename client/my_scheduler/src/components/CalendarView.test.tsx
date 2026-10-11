@@ -17,6 +17,7 @@ const ev = (over = {}) => ({
 beforeEach(() => {
   jest.resetAllMocks();
   mocked.listEvents.mockResolvedValue([ev()]);
+  mocked.getSettings.mockResolvedValue({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone });
   mocked.listWorkHours.mockResolvedValue([{ weekday: 1, start_time: '09:00', end_time: '17:00' }]);
   mocked.listZones.mockResolvedValue([]);
   mocked.getConflicts.mockResolvedValue({ active: [], ignored: [] });

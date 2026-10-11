@@ -1,9 +1,15 @@
 import { ConflictZone } from '../api/types';
 import { BackgroundEvent } from './workHoursBand';
+import {
+  addCivilDays, browserTimeZone, civilDayNumber, civilOf, civilWeekday, zonedParts, zonedTimeToDate,
+} from './timezone';
 
 const LABEL = 'Conflicts off';
 
-export function zonesToBackground(zones: ConflictZone[], rangeStart: Date, rangeEnd: Date): BackgroundEvent[] {
+/** Weekly zones repeat on the same weekday and wall-clock times in `timeZone` (default the browser's). */
+export function zonesToBackground(
+  zones: ConflictZone[], rangeStart: Date, rangeEnd: Date, timeZone: string = browserTimeZone()
+): BackgroundEvent[] {
   const out: BackgroundEvent[] = [];
   for (const z of zones) {
     const start = new Date(z.start_at);
@@ -14,23 +20,24 @@ export function zonesToBackground(zones: ConflictZone[], rangeStart: Date, range
       }
       continue;
     }
-    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-    const dayOffset = Math.round(
-      (new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime() - startDay.getTime()) / 86400000
-    );
-    const day = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate() - dayOffset);
-    while (day < rangeEnd) {
-      if (day.getDay() === start.getDay() && day >= startDay) {
-        const bandStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), start.getHours(), start.getMinutes());
-        const bandEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + dayOffset, end.getHours(), end.getMinutes());
+    const startDay = civilOf(start, timeZone);
+    const endDay = civilOf(end, timeZone);
+    const sp = zonedParts(start, timeZone);
+    const ep = zonedParts(end, timeZone);
+    const dayOffset = civilDayNumber(endDay) - civilDayNumber(startDay);
+    let day = addCivilDays(civilOf(rangeStart, timeZone), -dayOffset);
+    while (zonedTimeToDate(day, 0, 0, timeZone) < rangeEnd) {
+      if (civilWeekday(day) === civilWeekday(startDay) && civilDayNumber(day) >= civilDayNumber(startDay)) {
+        const bandStart = zonedTimeToDate(day, sp.h, sp.min, timeZone);
+        const bandEnd = zonedTimeToDate(addCivilDays(day, dayOffset), ep.h, ep.min, timeZone);
         if (bandStart < rangeEnd && bandEnd > rangeStart) {
           out.push({
-            id: `zone-${z.id}-${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`,
+            id: `zone-${z.id}-${day.y}-${day.m}-${day.d}`,
             title: LABEL, start: bandStart, end: bandEnd, display: 'background', classNames: ['cal-zone'],
           });
         }
       }
-      day.setDate(day.getDate() + 1);
+      day = addCivilDays(day, 1);
     }
   }
   return out;

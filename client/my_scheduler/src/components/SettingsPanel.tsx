@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as api from '../api/client';
 import { ConflictIgnore, ConflictZone, WorkHour } from '../api/types';
 import { DEFAULT_SCROLL_TIME, getDefaultEventColor, getScrollTime, setDefaultEventColor, setScrollTime } from '../lib/preferences';
+import { browserTimeZone, isValidTimeZone, supportedTimeZones } from '../lib/timezone';
 import { isReservedColor } from '../styles/reservedColors';
 import ColorPicker from './ColorPicker';
 import { useToast } from './Toast';
@@ -29,6 +30,12 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
   const [loadError, setLoadError] = useState<string | null>(null);
   const [color, setColor] = useState<string | null>(getDefaultEventColor());
   const [scrollTime, setScrollTimeState] = useState(() => getScrollTime().slice(0, 5));
+  const deviceZone = browserTimeZone();
+  const zoneOptions = useMemo(() => supportedTimeZones(), []);
+  const [savedZone, setSavedZone] = useState<string | null>(null);
+  const [zoneDraft, setZoneDraft] = useState('');
+  const [zoneError, setZoneError] = useState<string | null>(null);
+  const [zoneSaving, setZoneSaving] = useState(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -47,6 +54,27 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const s = await api.getSettings();
+        if (cancelled) return;
+        const tz = s?.timezone || deviceZone;
+        setSavedZone(tz);
+        setZoneDraft(tz);
+      } catch {
+        if (cancelled) return;
+        setSavedZone(deviceZone);
+        setZoneDraft(deviceZone);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -90,6 +118,29 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
     }
   }
 
+  async function saveZone() {
+    const tz = zoneDraft.trim();
+    if (!isValidTimeZone(tz)) {
+      setZoneError('Choose a valid time zone, such as America/New_York.');
+      return;
+    }
+    setZoneError(null);
+    setZoneSaving(true);
+    try {
+      const saved = await api.updateSettings({ timezone: tz });
+      const next = saved?.timezone || tz;
+      setSavedZone(next);
+      setZoneDraft(next);
+      onChanged();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not save the time zone.';
+      setZoneError(message);
+      showError(message);
+    } finally {
+      setZoneSaving(false);
+    }
+  }
+
   function changeScrollTime(value: string) {
     setScrollTimeState(value);
     if (!value) return; // a cleared time input is not a valid time; keep the stored preference
@@ -128,6 +179,58 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
               Reset to {DEFAULT_SCROLL_TIME.slice(0, 5)}
             </button>
           </div>
+        </div>
+      </section>
+
+      <section className="settings__section">
+        <h3>Time zone</h3>
+        <div className="field">
+          <label className="field__label" htmlFor="settings-time-zone">Time zone</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <input
+              id="settings-time-zone"
+              className="field__input"
+              list="settings-time-zone-options"
+              value={zoneDraft}
+              autoComplete="off"
+              spellCheck={false}
+              aria-invalid={zoneError ? true : undefined}
+              aria-describedby="settings-time-zone-hint"
+              onChange={(e) => {
+                setZoneDraft(e.target.value);
+                setZoneError(null);
+              }}
+            />
+            <datalist id="settings-time-zone-options">
+              {zoneOptions.map((z) => <option key={z} value={z} />)}
+            </datalist>
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={zoneSaving || savedZone === null || zoneDraft.trim() === savedZone}
+              onClick={() => void saveZone()}
+            >
+              Save time zone
+            </button>
+          </div>
+          <p id="settings-time-zone-hint" className="field__label">
+            This device's time zone is {deviceZone}.{' '}
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={zoneDraft === deviceZone}
+              onClick={() => {
+                setZoneDraft(deviceZone);
+                setZoneError(null);
+              }}
+            >
+              Use this device's time zone
+            </button>
+          </p>
+          {zoneError && <p className="field__error" role="alert">{zoneError}</p>}
+          {savedZone && savedZone !== deviceZone && (
+            <p className="field__label">Calendar grid still shows times in this device's time zone.</p>
+          )}
         </div>
       </section>
 

@@ -1,5 +1,5 @@
 import {
-  ApiEvent, ConflictIgnore, ConflictsResponse, ConflictZone, EventInput, WorkHour,
+  ApiEvent, ConflictIgnore, ConflictsResponse, ConflictZone, EventInput, Settings, WorkHour,
 } from './types';
 
 export class ApiClientError extends Error {
@@ -67,3 +67,6 @@ export const listIgnores = () => request<ConflictIgnore[]>('/api/conflict-ignore
 export const createIgnore = (input: { eventAId: string; eventBId: string; mode: 'once' | 'allow' }) =>
   request<void>('/api/conflict-ignores', json('POST', input));
 export const deleteIgnore = (id: string) => request<void>(`/api/conflict-ignores/${id}`, { method: 'DELETE' });
+
+export const getSettings = () => request<Settings>('/api/settings');
+export const updateSettings = (settings: Settings) => request<Settings>('/api/settings', json('PUT', settings));

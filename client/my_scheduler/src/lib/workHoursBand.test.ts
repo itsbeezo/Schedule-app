@@ -35,3 +35,24 @@ test('keeps the local clock time across a daylight-saving change', () => {
   );
   expect(bands.map((b) => b.start.getHours())).toEqual([9, 9]);
 });
+
+describe('saved time zone', () => {
+  const fri = [{ weekday: 5, start_time: '09:00', end_time: '17:00' }];
+
+  test('Friday 9-17 in New York lands at the right instants', () => {
+    const bands = workHoursToBackground(fri, new Date('2026-10-04T00:00:00Z'), new Date('2026-10-11T00:00:00Z'), 'America/New_York');
+    expect(bands).toHaveLength(1);
+    expect(bands[0].start.toISOString()).toBe('2026-10-09T13:00:00.000Z');
+    expect(bands[0].end.toISOString()).toBe('2026-10-09T21:00:00.000Z');
+  });
+
+  test('DST end week shifts the UTC instant but not the local hour', () => {
+    const bands = workHoursToBackground(fri, new Date('2026-10-26T00:00:00Z'), new Date('2026-11-09T00:00:00Z'), 'America/New_York');
+    expect(bands.map((b) => b.start.toISOString())).toEqual(['2026-10-30T13:00:00.000Z', '2026-11-06T14:00:00.000Z']);
+  });
+
+  test('a day that is Friday in Tokyo but Thursday in UTC is matched in the saved zone', () => {
+    const bands = workHoursToBackground(fri, new Date('2026-10-08T12:00:00Z'), new Date('2026-10-09T12:00:00Z'), 'Asia/Tokyo');
+    expect(bands.map((b) => b.start.toISOString())).toEqual(['2026-10-09T00:00:00.000Z']);
+  });
+});

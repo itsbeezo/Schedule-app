@@ -1,6 +1,6 @@
 .app-shell { max-width: 1280px; margin: 0 auto; padding: var(--space-2); }
 .app-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
-.app-title { margin: 0; font-size: var(--text-xl); font-weight: 600; }
+.app-title { margin: 0 auto 0 0; font-size: var(--text-xl); font-weight: 600; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1);
@@ -74,7 +74,7 @@
 .conflict-badge--ignored { background: var(--color-surface); color: var(--color-muted); border: 1px solid var(--color-muted); font-weight: 600; }
 
 .popover {
-  position: fixed; z-index: 45; width: min(300px, calc(100vw - 32px)); padding: var(--space-2);
+  position: fixed; z-index: 45; width: min(340px, calc(100vw - 16px)); padding: var(--space-2);
   background: var(--color-raised); border-radius: var(--radius-card); box-shadow: var(--shadow-pop);
 }
 .popover__title { margin: 0 0 var(--space-half); font-weight: 600; overflow-wrap: anywhere; }
@@ -88,11 +88,35 @@
 .settings__section { margin-bottom: var(--space-3); }
 
 /* The toast and the toolbar are both fixed at the bottom centre: lift the toast above the toolbar when it is shown. */
+/* Bottom stack: the toast sits above the toolbar. The two offsets match the toolbar's height without / with the
+   zone controls (CSS cannot measure a sibling; if the toolbar gains a row, change these two numbers). */
+:root { --stack-short: 100px; --stack-tall: 204px; }
 body:has(.selection-toolbar) .toast { bottom: calc(var(--space-3) + 72px); }
 .selection-toolbar .field__label { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 32px; }
 .selection-toolbar input[type='checkbox'] { width: 20px; height: 20px; margin: 0; accent-color: var(--color-mint); }
 
+/* Settings panel */
+.settings { box-shadow: var(--shadow-pop); }
+.settings > div:first-child { margin-bottom: var(--space-2); }
+.settings__section > div .btn { white-space: nowrap; }
+.settings h3 { margin: 0 0 var(--space-2); font-size: var(--text-lg); font-weight: 600; }
+.settings__section + .settings__section { padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
+.settings fieldset { margin: 0 0 var(--space-2) !important; }
+.settings fieldset > .btn, .settings .field .btn { min-height: 32px; }
+/* work-hour rows: start, "to", end and Remove stay on one line (inline flex-wrap from the component overridden) */
+.settings fieldset > div { flex-wrap: nowrap !important; gap: var(--space-1) !important; margin-bottom: var(--space-1) !important; }
+.settings fieldset > div .field__input { flex: 1 1 0; min-width: 0; padding: 8px 10px; }
+.settings fieldset > div .btn { flex: none; min-height: 40px; padding: 0 var(--space-1); }
+/* allowed-overlap and zone rows: quiet separators */
+.settings__section > div[style*='space-between'] { padding: var(--space-1) 0; border-bottom: 1px solid var(--color-border); margin-bottom: 0 !important; }
+.settings input[type='time'] { color-scheme: dark; }
+.settings .field__label { font-size: var(--text-sm); }
+
 @media (max-width: 600px) {
+  .settings fieldset > div .btn, .settings .btn { min-height: 44px; }
+  .settings fieldset > div .field__input, .settings #settings-scroll-time { min-height: 44px; }
+  .settings input[type='time']::-webkit-calendar-picker-indicator { display: none; }
+  .popover .btn { min-height: 44px; }
   /* Phone selection toolbar: a full-width card with tidy rows (Mark zone, Repeat weekly, then Add and Cancel
      side by side). !important beats the inline display style the component puts on the label. */
   .selection-toolbar {
@@ -108,15 +132,15 @@ body:has(.selection-toolbar) .toast { bottom: calc(var(--space-3) + 72px); }
   /* toast stacks just above the toolbar on phones (toolbar is ~84px tall with Add/Cancel only, ~190px with the
      zone controls); a full-width toast with a fixed offset can never cover its buttons */
   .toast { width: calc(100% - 2 * var(--space-2)); }
-  body:has(.selection-toolbar) .toast { bottom: 100px; }
-  body:has(.selection-toolbar .field__label) .toast { bottom: 204px; }
+  body:has(.selection-toolbar) .toast { bottom: var(--stack-short); }
+  body:has(.selection-toolbar .field__label) .toast { bottom: var(--stack-tall); }
   .settings { width: 100%; border-radius: 0; }
   .dialog { padding: var(--space-2); }
   .app-shell { padding: var(--space-1); }
 }
 
-.dialog { color-scheme: dark; }
-.dialog input[type='color'] {
+.dialog, .settings { color-scheme: dark; }
+.dialog input[type='color'], .settings input[type='color'] {
   width: 44px; height: 28px; padding: 2px 4px; cursor: pointer;
   background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-pill);
 }

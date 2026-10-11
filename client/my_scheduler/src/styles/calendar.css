@@ -57,7 +57,11 @@
   .fc .fc-event-main-frame, .fc .fc-event-main > div { display: flex; flex-direction: row; align-items: center; gap: 6px; overflow: hidden; }
   .fc .fc-event-main > div > .conflict-badge { flex: none; }
   .fc .fc-event-title-container { flex: 0 1 auto; min-width: 0; }
-  .fc .fc-event-time { white-space: nowrap; }
+  .fc .fc-event-time { white-space: nowrap; flex: none; }
+  /* One line only: a flex item's min-width is its longest word, so without min-width:0 the title wrapped
+     ("Call with" / "Alex") and spilled out of the block. Ellipsis instead. */
+  .fc .fc-event-title-container, .fc .fc-event-main > div > .fc-event-title { flex: 0 1 auto; min-width: 0; }
+  .fc .fc-event-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 }
 /* Narrow side-by-side blocks: smaller type, one clipped line for time and title */
 @container (max-width: 120px) {

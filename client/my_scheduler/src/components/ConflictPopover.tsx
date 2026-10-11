@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { AnchorRect, computePopoverPosition } from './popoverPosition';
 
 interface Props {
-  x: number;
-  y: number;
+  anchor: AnchorRect;
   otherTitle: string;
   state: 'active' | 'ignored';
   mode?: 'once' | 'allow';
@@ -12,8 +12,15 @@ interface Props {
   onClose(): void;
 }
 
-export default function ConflictPopover({ x, y, otherTitle, state, mode, onIgnoreOnce, onAllow, onRestore, onClose }: Props) {
+export default function ConflictPopover({ anchor, otherTitle, state, mode, onIgnoreOnce, onAllow, onRestore, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setPos(computePopoverPosition(anchor, { width: el.offsetWidth, height: el.offsetHeight }, { width: window.innerWidth, height: window.innerHeight }));
+  }, [anchor]);
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -54,11 +61,8 @@ export default function ConflictPopover({ x, y, otherTitle, state, mode, onIgnor
     };
   }, [onClose]);
 
-  const left = Math.max(8, Math.min(x, window.innerWidth - 316));
-  const top = Math.max(8, Math.min(y + 8, window.innerHeight - 180));
-
   return (
-    <div ref={ref} className="popover" role="dialog" aria-label="Conflict options" style={{ left, top }}>
+    <div ref={ref} className="popover" role="dialog" aria-label="Conflict options" style={pos ? { left: pos.left, top: pos.top } : { left: 0, top: 0, visibility: 'hidden' }}>
       {state === 'active' ? (
         <>
           <p className="popover__title">Overlaps with {otherTitle}</p>

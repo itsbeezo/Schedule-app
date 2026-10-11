@@ -5,6 +5,7 @@ interface Props {
   state: 'active' | 'ignored';
   mode?: 'once' | 'allow';
   otherTitle: string;
+  /** Receives the bounding rect of the event block that contains the badge. */
   onOpen(rect: DOMRect): void;
 }
 
@@ -28,7 +29,7 @@ export default function ConflictBadge({ state, mode, otherTitle, onOpen }: Props
       type="button"
       className={`conflict-badge${state === 'ignored' ? ' conflict-badge--ignored' : ''}`}
       aria-label={`${label}: overlaps with ${otherTitle}. Open options`}
-      onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
+      onClick={(e) => onOpen((e.currentTarget.closest('.fc-event') ?? e.currentTarget).getBoundingClientRect())}
     >
       <ConflictIcon />
       {label}

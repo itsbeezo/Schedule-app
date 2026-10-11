@@ -15,6 +15,7 @@ import { persistEventChange } from '../lib/eventChange';
 import { useCalendarData } from '../hooks/useCalendarData';
 import ConflictBadge from './ConflictBadge';
 import ConflictPopover from './ConflictPopover';
+import type { AnchorRect } from './popoverPosition';
 import SettingsPanel from './SettingsPanel';
 import { ConflictInfo, eventConflictState, indexConflicts } from '../lib/conflictIndex';
 import { workHoursToBackground } from '../lib/workHoursBand';
@@ -87,7 +88,7 @@ export default function CalendarView() {
   const [draft, setDraft] = useState<{ mode: 'create' | 'edit'; value: EventDraft } | null>(null);
   const [selection, setSelection] = useState<{ start: Date; end: Date } | null>(null);
 
-  const [popover, setPopover] = useState<{ x: number; y: number; eventId: string; info: ConflictInfo } | null>(null);
+  const [popover, setPopover] = useState<{ anchor: AnchorRect; eventId: string; info: ConflictInfo } | null>(null);
   const conflictIndex = useMemo(() => indexConflicts(data.conflicts), [data.conflicts]);
   const titleOf = (id: string) => data.events.find((e) => e.id === id)?.title ?? 'another event';
 
@@ -217,7 +218,7 @@ export default function CalendarView() {
                 state={state}
                 mode={info.mode}
                 otherTitle={titleOf(info.otherId)}
-                onOpen={(rect) => setPopover({ x: rect.left, y: rect.bottom, eventId: arg.event.id, info })}
+                onOpen={(rect) => setPopover({ anchor: { left: rect.left, top: rect.top, bottom: rect.bottom }, eventId: arg.event.id, info })}
               />
             ) : null;
           return (
@@ -253,8 +254,7 @@ export default function CalendarView() {
       )}
       {popover && (
         <ConflictPopover
-          x={popover.x}
-          y={popover.y}
+          anchor={popover.anchor}
           otherTitle={titleOf(popover.info.otherId)}
           state={popover.info.state}
           mode={popover.info.mode}

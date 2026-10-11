@@ -33,12 +33,15 @@ export default function ColorPicker({ value, onChange }: Props) {
             onClick={() => onChange(c)}
           />
         ))}
-        <input
-          type="color"
-          aria-label="Custom color"
-          value={value ?? '#4a63f0'}
-          onChange={(e) => onChange(e.target.value.toUpperCase())}
-        />
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <span className="field__label">Custom</span>
+          <input
+            type="color"
+            aria-label="Custom color"
+            value={value ?? '#4a63f0'}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+          />
+        </label>
       </div>
       {reserved && (
         <span className="field__error" role="alert">

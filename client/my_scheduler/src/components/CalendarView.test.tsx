@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import CalendarView, { CALENDAR_OPTIONS, describeEvent, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
-import { scrollToTimeCalls } from '../test/fullCalendarMock';
+import { optionIdentities, scrollToTimeCalls } from '../test/fullCalendarMock';
 
 jest.mock('@fullcalendar/react', () => ({ __esModule: true, default: require('../test/fullCalendarMock').default }));
 jest.mock('../api/client');
@@ -24,6 +24,8 @@ beforeEach(() => {
   mocked.deleteIgnore.mockResolvedValue(undefined);
   mocked.listIgnores.mockResolvedValue([]);
   scrollToTimeCalls.length = 0;
+  optionIdentities.headerToolbar.clear();
+  optionIdentities.views.clear();
 });
 
 const renderView = () => render(<ToastProvider><CalendarView /></ToastProvider>);
@@ -442,5 +444,59 @@ describe('short event blocks', () => {
     const badge = within(block).getByRole('button', { name: /^conflict:/i });
     const title = within(block).getByText('Planning');
     expect(title.compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+test('re-rendering for popover, selection, dialog or settings state hands FullCalendar the same option objects', async () => {
+  mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+  mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+  renderView();
+  await screen.findByText('Planning');
+  await userEvent.click(screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0]);
+  await userEvent.keyboard('{Escape}');
+  await userEvent.click(screen.getByRole('button', { name: 'mock-select' }));
+  await userEvent.click(screen.getByRole('button', { name: /^cancel/i }));
+  await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+  await screen.findByRole('dialog', { name: /settings/i });
+  await waitFor(() => expect(screen.getByLabelText(/calendar starts at/i)).toBeInTheDocument());
+  expect(optionIdentities.headerToolbar.size).toBe(1);
+  expect(optionIdentities.views.size).toBe(1);
+});
+
+describe('conflict popover anchors to the event block, not the badge', () => {
+  const rect = (left: number, top: number, w: number, h: number) =>
+    ({ left, top, right: left + w, bottom: top + h, width: w, height: h, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+
+  async function openWith(eventRect: DOMRect, badgeRect: DOMRect) {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    const badge = screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0];
+    const wrapper = badge.closest('.fc-event') as HTMLElement;
+    expect(wrapper).not.toBeNull();
+    const spy = jest.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if (this === wrapper) return eventRect;
+      if (this === badge) return badgeRect;
+      return rect(0, 0, 0, 0);
+    });
+    jest.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('popover') ? 100 : 0;
+    });
+    await userEvent.click(badge);
+    spy.mockRestore();
+    return screen.getByRole('dialog', { name: /conflict options/i });
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  test('opens below the event block bottom edge', async () => {
+    const pop = await openWith(rect(120, 100, 200, 80), rect(130, 105, 20, 20));
+    expect(pop).toHaveStyle({ top: '184px', left: '120px' });
+  });
+
+  test('flips above the event block top edge when there is no room below', async () => {
+    const pop = await openWith(rect(120, 700, 200, 50), rect(130, 705, 20, 20));
+    expect(pop).toHaveStyle({ top: `${700 - 4 - 100}px`, left: '120px' });
   });
 });

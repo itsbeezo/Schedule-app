@@ -187,14 +187,14 @@ describe('narrow (phone) default view', () => {
     const cal = await screen.findByTestId('calendar');
     expect(cal).toHaveAttribute('data-initial-view', 'timeGridDay');
     expect(cal).toHaveAttribute('data-toolbar', 'off');
-    expect(screen.getByRole('group', { name: 'This week' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /^(This week|Week of )/  })).toBeInTheDocument();
   });
 
   test('wide has no date strip', async () => {
     (window as any).matchMedia = mm(false);
     renderView();
     await screen.findByTestId('calendar');
-    expect(screen.queryByRole('group', { name: 'This week' })).toBeNull();
+    expect(screen.queryByRole('group', { name: /^(This week|Week of )/  })).toBeNull();
     expect(screen.getByTestId('calendar')).toHaveAttribute('data-toolbar', 'on');
   });
 

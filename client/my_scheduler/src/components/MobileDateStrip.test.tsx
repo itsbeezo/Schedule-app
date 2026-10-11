@@ -73,3 +73,18 @@ test('days are keyboard operable buttons', async () => {
   await userEvent.keyboard('{Enter}');
   expect(onSelect).toHaveBeenCalledWith(new Date(2026, 9, 12));
 });
+
+test('week strip is labelled by its first day when it does not contain today', () => {
+  setup({ selected: new Date(2026, 9, 21) });
+  expect(screen.getByRole('group', { name: 'Week of Sunday, October 18, 2026' })).toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'This week' })).toBeNull();
+});
+
+test('the chevron glyph is the same whether the picker is open or closed', async () => {
+  setup();
+  const btn = screen.getByRole('button', { name: /October 2026/ });
+  const glyph = () => btn.querySelector('.date-strip__chevron')!.textContent;
+  expect(glyph()).toBe('▾');
+  await userEvent.click(btn);
+  expect(glyph()).toBe('▾');
+});

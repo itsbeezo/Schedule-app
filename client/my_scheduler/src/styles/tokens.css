@@ -15,12 +15,11 @@
   --color-on-mint: #06241A;
   --color-on-coral: #2A0D05;
 
-  /* Conflict signal color: the ONE place the conflict badge and the conflict outline read from. Default is coral
-     (approved palette). Candidates for the owner's color experiment; switch with <html data-conflict-color="red|amber">
-     (see design/CONFLICT-COLOR.md). Adopting red or amber as the real color also changes the reserved-color list
-     (spec 4.3, client + server), which needs owner approval. */
-  --color-conflict: var(--color-coral);
-  --color-on-conflict: var(--color-on-coral);
+  /* Conflict signal color: the ONE place the conflict badge and the conflict outline read from. Default is AMBER
+     (owner decision; a minor UI accent, deliberately NOT a reserved event color). Coral and red stay switchable with
+     <html data-conflict-color="coral|red"> (see design/CONFLICT-COLOR.md). */
+  --color-conflict: var(--color-conflict-amber);
+  --color-on-conflict: var(--color-on-conflict-amber);
   --color-conflict-red: #FF5A5F;
   --color-on-conflict-red: #2A0508;
   --color-conflict-amber: #FFC83D;
@@ -57,5 +56,6 @@
   --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
+:root[data-conflict-color='coral'] { --color-conflict: var(--color-coral); --color-on-conflict: var(--color-on-coral); }
 :root[data-conflict-color='red'] { --color-conflict: var(--color-conflict-red); --color-on-conflict: var(--color-on-conflict-red); }
 :root[data-conflict-color='amber'] { --color-conflict: var(--color-conflict-amber); --color-on-conflict: var(--color-on-conflict-amber); }

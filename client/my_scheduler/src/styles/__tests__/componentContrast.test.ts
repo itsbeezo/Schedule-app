@@ -20,7 +20,7 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-light-blue', '--color-bg', TEXT, 'zone label text'],
   ['--color-light-blue', '--color-surface', TEXT, 'zone label text on grid'],
   ['--color-on-mint', '--color-mint', TEXT, '.btn--primary'],
-  ['--color-on-coral', '--color-coral', TEXT, '.conflict-badge'],
+  ['--color-on-coral', '--color-coral', TEXT, 'conflict badge text, coral option'],
   ['--color-on-purple', '--color-purple', TEXT, 'field error mark, active toolbar button'],
   ['--color-on-royal', '--color-royal', TEXT, '.cal-event'],
   ['--color-mint', '--color-bg', UI, 'focus ring, now indicator'],
@@ -30,7 +30,7 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-mint', '--color-royal', UI, 'focus ring even if it touched a default event'],
   ['--color-bg', '--color-purple', UI, 'page-colored focus gap and overlap separator against a purple event'],
   ['--color-bg', '--color-royal', UI, 'page-colored focus gap and overlap separator against a default event'],
-  ['--color-coral', '--color-surface', UI, 'conflict outline against the grid'],
+  ['--color-coral', '--color-surface', UI, 'conflict outline against the grid, coral option'],
   // every selectable conflict color (design/CONFLICT-COLOR.md): label on badge, and badge/outline against the grid
   ['--color-on-conflict-red', '--color-conflict-red', TEXT, 'conflict badge text, red option'],
   ['--color-on-conflict-amber', '--color-conflict-amber', TEXT, 'conflict badge text, amber option'],
@@ -39,7 +39,7 @@ const PAIRS: Array<[string, string, number, string]> = [
   ['--color-conflict-red', '--color-bg', UI, 'conflict badge against the page, red option'],
   ['--color-conflict-amber', '--color-bg', UI, 'conflict badge against the page, amber option'],
   ['--color-conflict-amber', '--color-royal', UI, 'amber badge against the default event fill'],
-  // coral against the royal fill is only 2.1:1; the outline's outer edge meets the grid (checked above) and the
+  // the default (amber) clears 3:1 against the default event fill, asserted above. Coral against the royal fill is only 2.1:1; the outline's outer edge meets the grid (checked above) and the
   // conflict is never signalled by color alone (badge with icon and text), so this pairing is intentionally not asserted.
   ['--color-purple', '--color-raised', UI, 'toast error stripe, input focus border'],
   ['--color-purple', '--color-surface', UI, 'input focus border on field'],
@@ -57,9 +57,9 @@ test.each(PAIRS)('%s on %s is at least %f:1 (%s)', (fg, bg, min) => {
   expect(contrastRatio(t[fg], t[bg])).toBeGreaterThanOrEqual(min);
 });
 
-test('the conflict token defaults to coral and the badge and outline read only from it', () => {
-  expect(css).toMatch(/--color-conflict:\s*var\(--color-coral\)/);
-  expect(css).toMatch(/--color-on-conflict:\s*var\(--color-on-coral\)/);
+test('the conflict token defaults to the amber accent and the badge and outline read only from it', () => {
+  expect(css).toMatch(/--color-conflict:\s*var\(--color-conflict-amber\)/);
+  expect(css).toMatch(/--color-on-conflict:\s*var\(--color-on-conflict-amber\)/);
   const dir = path.join(__dirname, '..');
   const comps = fs.readFileSync(path.join(dir, 'components.css'), 'utf8');
   const cal = fs.readFileSync(path.join(dir, 'calendar.css'), 'utf8');

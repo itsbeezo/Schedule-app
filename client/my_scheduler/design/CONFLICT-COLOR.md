@@ -1,9 +1,8 @@
 # Conflict badge color: coral vs red vs amber
 
 How to switch: the badge and the conflict outline read `--color-conflict` / `--color-on-conflict` (tokens.css).
-Default is coral. Set `<html data-conflict-color="red">` or `="amber"` to preview; no component change is needed.
-Changing the real default means editing those two lines in tokens.css. Adopting red or amber also changes the
-reserved-color list (spec 4.3, client `reservedColors.ts` and server) and a palette hex (spec 4.1): owner approval.
+Default is AMBER. Set `<html data-conflict-color="coral">` or `="red"` to preview the alternatives; no component
+change is needed.
 
 Screenshots (design/screenshots): `conflict-{coral,red,amber}-{dark,light}.png`. Rows: 60-minute block with the full
 badge, 30-minute block with compact badge, narrow 30-minute icon-only badge, each on six event colors from the
@@ -27,5 +26,9 @@ Fit with the visual style: the palette is violet, royal blue, mint and a warm ac
 read as a different message and clashes with the cool field. Amber stays in the warm family, is clearly different
 from every event color and from the mint now-line and light-blue work hours, and reads as "attention" by convention.
 
-Recommendation: amber (#FFC83D, label #2B1D00). Not applied as default: it is a new palette hex and changes the
-reserved colors, so it needs owner approval at the checkpoint. Coral stays the default until then.
+Decision (owner, approved): amber (#FFC83D, label #2B1D00) is the default conflict color. It is a minor UI accent, not
+a full feature color, so it is NOT added to the reserved event colors (`reservedColors.ts` and the server list are
+unchanged: coral, light blue, purple). Coral and red remain selectable via `data-conflict-color`. The palette test
+still guards the approved Violet dusk base colors; amber/red are covered by the conflict-option contrast tests.
+Compact icon-only badge: the icon is now wider (clock with a "!" to the right), and the existing 4px side padding
+keeps it uncramped (checked in the mockup shots).

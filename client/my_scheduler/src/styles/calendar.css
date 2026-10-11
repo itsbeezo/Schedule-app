@@ -82,6 +82,8 @@
   outline: 2px dashed var(--color-muted); outline-offset: -2px;
 }
 .fc .fc-event.cal-event--ignored .fc-event-main { color: var(--color-muted); }
+/* title stays at full text color on the calm fill (13:1); time and badge are the quiet parts */
+.fc .fc-event.cal-event--ignored .fc-event-title { color: var(--color-text); }
 
 .fc .fc-bg-event.cal-work-hours { opacity: 1; background: var(--color-work-hours) !important; border: 0 !important; border-radius: var(--radius-event); }
 .fc .fc-bg-event.cal-zone {

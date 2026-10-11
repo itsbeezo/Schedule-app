@@ -45,6 +45,10 @@
 .swatch { width: 28px; height: 28px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
 .swatch:hover { border-color: var(--color-muted); }
 .swatch--selected, .swatch--selected:hover { border-color: var(--color-text); }
+/* clear selected state on any background: an outline ring with a gap (shape, not only color); the Default pill gets a check */
+.swatch.swatch--selected { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.btn.swatch--selected { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.btn.swatch--selected::before { content: '\2713'; }
 
 .toast {
   position: fixed; bottom: var(--space-3); left: 50%; transform: translateX(-50%); z-index: 60;
@@ -74,11 +78,12 @@
 .conflict-badge--ignored { background: var(--color-surface); color: var(--color-muted); border: 1px solid var(--color-muted); font-weight: 600; }
 
 .popover {
-  position: fixed; z-index: 45; width: min(340px, calc(100vw - 16px)); padding: var(--space-2);
+  position: fixed; z-index: 45; width: min(300px, calc(100vw - 16px)); padding: var(--space-2);
   background: var(--color-raised); border-radius: var(--radius-card); box-shadow: var(--shadow-pop);
 }
 .popover__title { margin: 0 0 var(--space-half); font-weight: 600; overflow-wrap: anywhere; }
 .popover__actions { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-2); }
+.popover__actions .btn { padding: 0 12px; }
 
 .settings {
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 50; width: min(420px, 100%); overflow: auto;
@@ -117,6 +122,9 @@ body:has(.selection-toolbar) .toast { bottom: calc(var(--space-3) + 72px); }
   .settings fieldset > div .field__input, .settings #settings-scroll-time { min-height: 44px; }
   .settings input[type='time']::-webkit-calendar-picker-indicator { display: none; }
   .popover .btn { min-height: 44px; }
+  /* the component positions the popover with inline left/top assuming a 316px-wide box; on phones pin it to an
+     8px inset on both sides (!important beats the inline style) */
+  .popover { left: var(--space-1) !important; right: var(--space-1); width: auto; }
   /* Phone selection toolbar: a full-width card with tidy rows (Mark zone, Repeat weekly, then Add and Cancel
      side by side). !important beats the inline display style the component puts on the label. */
   .selection-toolbar {

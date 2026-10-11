@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle } from 'react';
 
 type Info = Record<string, any>;
 
@@ -9,13 +9,18 @@ export interface MockCalendarProps {
   eventClick?: (arg: Info) => void;
   eventDrop?: (arg: Info) => void;
   eventResize?: (arg: Info) => void;
+  eventDidMount?: (arg: Info) => void;
   eventContent?: (arg: Info) => React.ReactNode;
   [key: string]: unknown;
 }
 
 export const MOCK_RANGE = { start: new Date(2026, 9, 5), end: new Date(2026, 9, 12) };
 
-export default function FullCalendarMock(props: MockCalendarProps) {
+export const scrollToTimeCalls: string[] = [];
+
+const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawProps, ref) {
+  const props: MockCalendarProps = rawProps;
+  useImperativeHandle(ref, () => ({ getApi: () => ({ scrollToTime: (t: string) => { scrollToTimeCalls.push(t); } }) }));
   const { datesSet } = props;
   useEffect(() => {
     datesSet?.(MOCK_RANGE);
@@ -23,14 +28,18 @@ export default function FullCalendarMock(props: MockCalendarProps) {
   }, []);
   const visible = (props.events ?? []).filter((e) => e.display !== 'background');
   return (
-    <div data-testid="calendar" data-scroll-time={props.scrollTime as string | undefined}
+    <div data-testid="calendar" data-initial-view={props.initialView as string | undefined}
+      data-toolbar-right={(props.headerToolbar as Info | undefined)?.right}
+      data-scroll-time={props.scrollTime as string | undefined}
       data-slot-min-time={props.slotMinTime as string | undefined}
       data-slot-max-time={props.slotMaxTime as string | undefined}>
       <div data-testid="bands">{(props.events ?? []).filter((e) => e.display === 'background').length}</div>
       {visible.map((e) => {
-        const info = { event: { id: e.id, title: e.title, start: e.start, end: e.end, extendedProps: e.extendedProps ?? {} } };
+        const info = { event: { id: e.id, title: e.title, display: e.display, start: new Date(e.start), end: new Date(e.end), extendedProps: e.extendedProps ?? {} } };
         return (
-          <div key={e.id} data-testid={`event-${e.id}`} className={(e.classNames ?? []).join(' ')}>
+          <div key={e.id} ref={(el) => { if (el) props.eventDidMount?.({ event: info.event, el }); }} data-testid={`event-${e.id}`} tabIndex={0}
+            onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { props.eventClick?.({ ...info, jsEvent: ev.nativeEvent }); ev.preventDefault(); } }}
+            className={(e.classNames ?? []).join(' ')}>
             {props.eventContent ? props.eventContent(info) : e.title}
             <button onClick={() => props.eventClick?.(info)}>open {e.title}</button>
             <button
@@ -52,4 +61,6 @@ export default function FullCalendarMock(props: MockCalendarProps) {
       </button>
     </div>
   );
-}
+});
+
+export default FullCalendarMock;

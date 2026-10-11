@@ -2,6 +2,7 @@ import { WorkHour } from '../api/types';
 
 export interface BackgroundEvent {
   id: string;
+  title?: string;
   start: Date;
   end: Date;
   display: 'background';

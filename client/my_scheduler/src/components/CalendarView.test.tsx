@@ -1,8 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CalendarView, { CALENDAR_OPTIONS, toFullCalendarEvent } from './CalendarView';
+import CalendarView, { CALENDAR_OPTIONS, describeEvent, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
+import { scrollToTimeCalls } from '../test/fullCalendarMock';
 
 jest.mock('@fullcalendar/react', () => ({ __esModule: true, default: require('../test/fullCalendarMock').default }));
 jest.mock('../api/client');
@@ -19,6 +20,10 @@ beforeEach(() => {
   mocked.listWorkHours.mockResolvedValue([{ weekday: 1, start_time: '09:00', end_time: '17:00' }]);
   mocked.listZones.mockResolvedValue([]);
   mocked.getConflicts.mockResolvedValue({ active: [], ignored: [] });
+  mocked.createIgnore.mockResolvedValue(undefined);
+  mocked.deleteIgnore.mockResolvedValue(undefined);
+  mocked.listIgnores.mockResolvedValue([]);
+  scrollToTimeCalls.length = 0;
 });
 
 const renderView = () => render(<ToastProvider><CalendarView /></ToastProvider>);
@@ -158,4 +163,284 @@ test('no slotMinTime/slotMaxTime reaches FullCalendar', async () => {
   await screen.findByText('Planning');
   expect(screen.getByTestId('calendar')).not.toHaveAttribute('data-slot-min-time');
   expect(screen.getByTestId('calendar')).not.toHaveAttribute('data-slot-max-time');
+});
+
+describe('narrow (phone) default view', () => {
+  const mm = (matches: boolean) => jest.fn().mockReturnValue({ matches });
+  afterEach(() => { delete (window as any).matchMedia; });
+
+  test('isNarrowViewport reads the media query and falls back to false without matchMedia', () => {
+    const fn = mm(true);
+    expect(isNarrowViewport(fn as any)).toBe(true);
+    expect(fn).toHaveBeenCalledWith(NARROW_QUERY);
+    expect(NARROW_QUERY).toBe('(max-width: 600px)');
+    expect(isNarrowViewport(mm(false) as any)).toBe(false);
+    expect(isNarrowViewport(undefined)).toBe(false);
+    expect(isNarrowViewport((() => { throw new Error('x'); }) as any)).toBe(false);
+  });
+
+  test('narrow starts on the 3-day view with a toolbar offering 3 day, Day and Month', async () => {
+    (window as any).matchMedia = mm(true);
+    renderView();
+    const cal = await screen.findByTestId('calendar');
+    expect(cal).toHaveAttribute('data-initial-view', 'timeGrid3Day');
+    expect(cal).toHaveAttribute('data-toolbar-right', 'timeGridDay,timeGrid3Day,timeGridWeek,dayGridMonth');
+  });
+
+  test('wide (or no matchMedia) starts on the week with the unchanged toolbar', async () => {
+    (window as any).matchMedia = mm(false);
+    const { unmount } = renderView();
+    let cal = await screen.findByTestId('calendar');
+    expect(cal).toHaveAttribute('data-initial-view', 'timeGridWeek');
+    expect(cal).toHaveAttribute('data-toolbar-right', 'timeGridDay,timeGridWeek,dayGridMonth');
+    unmount();
+    delete (window as any).matchMedia;
+    renderView();
+    cal = await screen.findByTestId('calendar');
+    expect(cal).toHaveAttribute('data-initial-view', 'timeGridWeek');
+  });
+
+  test('the 3-day view is a 3-day time grid that inherits snapping, height and scroll settings', () => {
+    const v = (CALENDAR_OPTIONS.views as any).timeGrid3Day;
+    expect(v).toMatchObject({ type: 'timeGrid', duration: { days: 3 }, buttonText: '3 day' });
+    for (const k of ['snapDuration', 'scrollTime', 'scrollTimeReset', 'height', 'editable', 'selectable', 'slotDuration']) {
+      expect(v).not.toHaveProperty(k);
+    }
+    expect(CALENDAR_OPTIONS.snapDuration).toBe('00:15:00');
+    expect(CALENDAR_OPTIONS.height).toMatch(/100vh/);
+  });
+});
+
+const ev2 = () => ev({ id: 'e2', title: 'Dentist', start_at: '2026-10-06T10:30:00.000Z', end_at: '2026-10-06T11:30:00.000Z' });
+const activeConflict = { eventAId: 'e1', eventBId: 'e2', overlapStart: '2026-10-06T10:30:00.000Z', overlapEnd: '2026-10-06T11:00:00.000Z' };
+
+describe('conflict states', () => {
+  test('an active conflict marks both events and shows a Conflict badge on each', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    expect(screen.getByTestId('event-e1')).toHaveClass('cal-event--conflict');
+    expect(screen.getByTestId('event-e2')).toHaveClass('cal-event--conflict');
+    expect(screen.getAllByRole('button', { name: /^conflict: overlaps with/i })).toHaveLength(2);
+  });
+
+  test('"Ignore this once" saves a once-ignore for the pair and refreshes conflicts', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByRole('button', { name: /conflict: overlaps with dentist/i }));
+    expect(screen.getByText(/overlaps with dentist/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /ignore this once/i }));
+    await waitFor(() => expect(mocked.createIgnore).toHaveBeenCalledWith({ eventAId: 'e1', eventBId: 'e2', mode: 'once' }));
+    await waitFor(() => expect(mocked.getConflicts).toHaveBeenCalledTimes(2));
+  });
+
+  test('"Allow overlap" saves an allow-ignore', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByRole('button', { name: /conflict: overlaps with dentist/i }));
+    await userEvent.click(screen.getByRole('button', { name: /allow overlap/i }));
+    await waitFor(() => expect(mocked.createIgnore).toHaveBeenCalledWith({ eventAId: 'e1', eventBId: 'e2', mode: 'allow' }));
+  });
+
+  test('an ignored conflict is shown quietly and can be restored', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [], ignored: [{ ...activeConflict, mode: 'allow', ignoreId: 'ign1' }] });
+    renderView();
+    await screen.findByText('Planning');
+    expect(screen.getByTestId('event-e1')).toHaveClass('cal-event--ignored');
+    expect(screen.getByTestId('event-e1')).not.toHaveClass('cal-event--conflict');
+    await userEvent.click(screen.getAllByRole('button', { name: /^allowed: overlaps with/i })[0]);
+    await userEvent.click(screen.getByRole('button', { name: /restore conflict/i }));
+    await waitFor(() => expect(mocked.deleteIgnore).toHaveBeenCalledWith('ign1'));
+  });
+
+  test('a failed ignore shows a toast', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    mocked.createIgnore.mockRejectedValue(new Error('Those events do not overlap'));
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0]);
+    await userEvent.click(screen.getByRole('button', { name: /allow overlap/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Those events do not overlap');
+  });
+
+  test('clicking a badge does not open the edit dialog, and Escape closes the popover', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0]);
+    expect(screen.getByRole('dialog', { name: /conflict options/i })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe('conflict popover keyboard and focus', () => {
+  async function setup() {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    return screen.getAllByRole('button', { name: /^conflict: overlaps with/i })[0];
+  }
+
+  test.each([['Enter', '{Enter}'], ['Space', ' ']])('%s on the focused badge opens the popover, not the edit dialog', async (_n, key) => {
+    const badge = await setup();
+    badge.focus();
+    await userEvent.keyboard(key);
+    expect(screen.getByRole('dialog', { name: /conflict options/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^title/i)).toBeNull();
+  });
+
+  test('Enter on the event itself still opens the edit dialog', async () => {
+    await setup();
+    screen.getByTestId('event-e1').focus();
+    await userEvent.keyboard('{Enter}');
+    expect(await screen.findByLabelText(/^title/i)).toBeInTheDocument();
+  });
+
+  test('focus moves to the first button on open, Tab stays inside, Escape restores focus to the badge', async () => {
+    const badge = await setup();
+    await userEvent.click(badge);
+    const first = screen.getByRole('button', { name: /ignore this once/i });
+    const last = screen.getByRole('button', { name: /allow overlap/i });
+    expect(first).toHaveFocus();
+    await userEvent.tab();
+    expect(last).toHaveFocus();
+    await userEvent.tab();
+    expect(first).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(last).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(badge).toHaveFocus();
+  });
+});
+
+describe('readable event labels for narrow blocks', () => {
+  test('describeEvent gives "Title, start-end"', () => {
+    const s = new Date(2026, 9, 6, 9, 0);
+    const e = new Date(2026, 9, 6, 10, 30);
+    const text = describeEvent('Dentist', s, e);
+    expect(text.startsWith('Dentist, ')).toBe(true);
+    expect(text).toContain('\u2013');
+    expect(text).toMatch(/9:00/);
+    expect(text).toMatch(/10:30/);
+  });
+
+  test('the calendar makes events focusable and sets a title on each event element', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    renderView();
+    await screen.findByText('Planning');
+    expect(CALENDAR_OPTIONS.eventInteractive).toBe(true);
+    expect(screen.getByTestId('event-e2')).toHaveAttribute('title', expect.stringMatching(/^Dentist, .+\u2013.+/));
+    expect(screen.getByTestId('event-e1')).toHaveAttribute('title', expect.stringMatching(/^Planning, /));
+  });
+});
+
+describe('unconflicted zones', () => {
+  test('the toolbar offers Mark as unconflicted zone and saves the dragged range', async () => {
+    mocked.createZone.mockResolvedValue({ id: 'z', start_at: '', end_at: '', repeats_weekly: false });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByText('mock-select'));
+    await userEvent.click(screen.getByRole('button', { name: /mark as unconflicted zone/i }));
+    await waitFor(() =>
+      expect(mocked.createZone).toHaveBeenCalledWith({
+        start_at: new Date(2026, 9, 6, 9, 0).toISOString(),
+        end_at: new Date(2026, 9, 6, 10, 0).toISOString(),
+        repeats_weekly: false,
+      })
+    );
+    await waitFor(() => expect(mocked.listZones).toHaveBeenCalledTimes(2));
+  });
+
+  test('"Repeat weekly" makes the zone repeat', async () => {
+    mocked.createZone.mockResolvedValue({ id: 'z', start_at: '', end_at: '', repeats_weekly: true });
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByText('mock-select'));
+    await userEvent.click(screen.getByLabelText(/repeat weekly/i));
+    await userEvent.click(screen.getByRole('button', { name: /mark as unconflicted zone/i }));
+    await waitFor(() => expect(mocked.createZone).toHaveBeenCalledWith(expect.objectContaining({ repeats_weekly: true })));
+  });
+
+  test('zones from the server are drawn as background bands', async () => {
+    mocked.listZones.mockResolvedValue([
+      { id: 'z', start_at: new Date(2026, 9, 6, 9, 0).toISOString(), end_at: new Date(2026, 9, 6, 17, 0).toISOString(), repeats_weekly: false },
+    ]);
+    renderView();
+    await screen.findByText('Planning');
+    await waitFor(() => expect(screen.getByTestId('bands')).toHaveTextContent('2'));
+  });
+
+  test('a failed zone save shows a toast and keeps the toolbar', async () => {
+    mocked.createZone.mockRejectedValue(new Error('end_at must be after start_at'));
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByText('mock-select'));
+    await userEvent.click(screen.getByRole('button', { name: /mark as unconflicted zone/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('end_at must be after start_at');
+    expect(screen.getByRole('toolbar')).toBeInTheDocument();
+  });
+});
+
+describe('settings panel', () => {
+  afterEach(() => localStorage.clear());
+
+  test('the Settings button opens the settings panel and Close hides it, returning focus to the button', async () => {
+    renderView();
+    await screen.findByText('Planning');
+    const button = screen.getByRole('button', { name: /^settings$/i });
+    await userEvent.click(button);
+    expect(await screen.findByRole('dialog', { name: /settings/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /close/i }));
+    expect(screen.queryByRole('dialog', { name: /settings/i })).toBeNull();
+    expect(button).toHaveFocus();
+  });
+
+  test('changing "Calendar starts at" scrolls the open calendar and updates its scrollTime', async () => {
+    renderView();
+    await screen.findByText('Planning');
+    await userEvent.click(screen.getByRole('button', { name: /^settings$/i }));
+    const input = await screen.findByLabelText('Calendar starts at');
+    fireEvent.change(input, { target: { value: '09:15' } });
+    expect(scrollToTimeCalls).toEqual(['09:15']);
+    expect(screen.getByTestId('calendar')).toHaveAttribute('data-scroll-time', '09:15');
+  });
+});
+
+describe('short event blocks', () => {
+  const short = (over = {}) => ev({ id: 's1', title: 'Quick', start_at: '2026-10-06T10:00:00.000Z', end_at: '2026-10-06T10:30:00.000Z', ...over });
+  const s2 = () => ev({ id: 's2', title: 'Other', start_at: '2026-10-06T10:15:00.000Z', end_at: '2026-10-06T11:15:00.000Z' });
+  const conflict = { eventAId: 's1', eventBId: 's2', overlapStart: '2026-10-06T10:15:00.000Z', overlapEnd: '2026-10-06T10:30:00.000Z' };
+
+  test('a 30-minute conflicting block renders its badge before the title, keeping its label', async () => {
+    mocked.listEvents.mockResolvedValue([short(), s2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [conflict], ignored: [] });
+    renderView();
+    await screen.findByText('Quick');
+    const block = screen.getByTestId('event-s1');
+    const badge = within(block).getByRole('button', { name: /^conflict: overlaps with other/i });
+    const title = within(block).getByText('Quick');
+    expect(badge.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test('a longer block keeps the badge after the title', async () => {
+    mocked.listEvents.mockResolvedValue([ev(), ev2()]);
+    mocked.getConflicts.mockResolvedValue({ active: [activeConflict], ignored: [] });
+    renderView();
+    await screen.findByText('Planning');
+    const block = screen.getByTestId('event-e1');
+    const badge = within(block).getByRole('button', { name: /^conflict:/i });
+    const title = within(block).getByText('Planning');
+    expect(title.compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

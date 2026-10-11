@@ -155,7 +155,7 @@ export default function CalendarView() {
   useSwipe(gridRef, {
     enabled: narrow,
     onSwipe: (dir) => (dir === 'next' ? calApi()?.next() : calApi()?.prev()),
-    ignoreStart: (t) => !!(t as Element | null)?.closest?.('.fc-event'),
+    ignoreStart: (t) => !!(t as Element | null)?.closest?.('.fc-event:not(.fc-bg-event)'),
     isBusy: () => !!gridRef.current?.querySelector(GESTURE_BUSY_SELECTOR),
   });
   const [showSettings, setShowSettings] = useState(false);

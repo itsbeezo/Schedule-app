@@ -240,6 +240,14 @@ describe('narrow (phone) default view', () => {
     fireEvent.touchStart(evt, start);
     fireEvent.touchEnd(evt, end(100));
     expect(navCalls).toEqual([]);
+    const band = document.createElement('div');
+    band.className = 'fc-event cal-work-hours fc-bg-event';
+    cal.appendChild(band);
+    fireEvent.touchStart(band, start);
+    fireEvent.touchEnd(band, end(100));
+    expect(navCalls).toEqual(['next']);
+    navCalls.length = 0;
+    cal.removeChild(band);
     const dragging = document.createElement('div');
     dragging.className = 'fc-event-dragging';
     cal.appendChild(dragging);

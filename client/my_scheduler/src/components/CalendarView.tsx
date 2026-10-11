@@ -26,6 +26,18 @@ import { zonesToBackground } from '../lib/zoneBand';
 import { readableTextOn } from '../styles/contrast';
 import { civilLocalDate, dateOnlyString, formatTimeIn, nextHourIn, todayIn } from '../lib/timezone';
 
+/** Month view shows at most this many events per day, then a "+N more" link that opens FullCalendar's popover. */
+export const MONTH_MAX_EVENTS = 3;
+
+/** Accessible name for the "+N more" link, e.g. "2 more events on Tuesday, October 6, 2026". */
+export function moreLinkLabel(num: number, dateStr: string | null | undefined): string {
+  const base = `${num} more event${num === 1 ? '' : 's'}`;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr ?? '');
+  if (!m) return base;
+  const day = new Date(+m[1], +m[2] - 1, +m[3]);
+  return `${base} on ${day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`;
+}
+
 export const CALENDAR_OPTIONS: CalendarOptions = {
   plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, luxon3Plugin],
   initialView: 'timeGridWeek',
@@ -42,6 +54,14 @@ export const CALENDAR_OPTIONS: CalendarOptions = {
   eventLongPressDelay: 400,
   selectLongPressDelay: 400,
   height: 'max(480px, calc(100vh - 12rem))',
+  views: { dayGridMonth: { dayMaxEvents: MONTH_MAX_EVENTS } },
+  moreLinkContent: (arg) => `+${arg.num} more`,
+  moreLinkHint: (num) => moreLinkLabel(num, null),
+  moreLinkDidMount: (arg) => {
+    // FullCalendar only knows the count; add the day from the enclosing cell so the name says which day.
+    const date = arg.el.closest('[data-date]')?.getAttribute('data-date');
+    arg.el.setAttribute('aria-label', moreLinkLabel(arg.num, date));
+  },
 };
 
 export const NARROW_QUERY = '(max-width: 600px)';

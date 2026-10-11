@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CalendarView, { CALENDAR_OPTIONS, describeEvent, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
+import CalendarView, { CALENDAR_OPTIONS, describeEvent, moreLinkLabel, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
 import { navCalls, optionIdentities, scrollToTimeCalls } from '../test/fullCalendarMock';
@@ -294,7 +294,7 @@ describe('narrow (phone) default view', () => {
   });
 
   test('there is no 3-day view any more', () => {
-    expect(CALENDAR_OPTIONS.views).toBeUndefined();
+    expect(Object.keys(CALENDAR_OPTIONS.views ?? {})).toEqual(['dayGridMonth']);
     expect(CALENDAR_OPTIONS.snapDuration).toBe('00:15:00');
   });
 });
@@ -612,5 +612,22 @@ describe('saved time zone drives the grid', () => {
     await userEvent.click(screen.getByRole('button', { name: /drag planning/i }));
     const utc = tz === 'Asia/Tokyo' ? ['2026-10-06T00:15:00.000Z', '2026-10-06T01:15:00.000Z'] : ['2026-10-06T13:15:00.000Z', '2026-10-06T14:15:00.000Z'];
     await waitFor(() => expect(mocked.updateEvent).toHaveBeenCalledWith('e1', { start_at: utc[0], end_at: utc[1] }));
+  });
+});
+
+describe('month view crowding', () => {
+  test('month view caps events per day and shows "+N more" with a dated accessible name', () => {
+    expect(CALENDAR_OPTIONS.views).toEqual({ dayGridMonth: { dayMaxEvents: 3 } });
+    expect(CALENDAR_OPTIONS.dayMaxEvents).toBeUndefined(); // week/day views are not capped
+    const content = CALENDAR_OPTIONS.moreLinkContent as (a: { num: number }) => string;
+    expect(content({ num: 4 })).toBe('+4 more');
+    expect(moreLinkLabel(1, null)).toBe('1 more event');
+    expect(moreLinkLabel(4, '2026-10-06')).toBe('4 more events on Tuesday, October 6, 2026');
+    const el = document.createElement('div');
+    el.setAttribute('data-date', '2026-10-06');
+    el.innerHTML = '<a class="fc-daygrid-more-link">x</a>';
+    const a = el.querySelector('a') as HTMLElement;
+    (CALENDAR_OPTIONS.moreLinkDidMount as any)({ el: a, num: 2 });
+    expect(a).toHaveAttribute('aria-label', '2 more events on Tuesday, October 6, 2026');
   });
 });

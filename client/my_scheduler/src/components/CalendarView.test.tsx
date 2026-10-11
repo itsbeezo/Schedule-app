@@ -240,6 +240,14 @@ describe('narrow (phone) default view', () => {
     fireEvent.touchStart(evt, start);
     fireEvent.touchEnd(evt, end(100));
     expect(navCalls).toEqual([]);
+    const band = document.createElement('div');
+    band.className = 'fc-event cal-work-hours fc-bg-event';
+    cal.appendChild(band);
+    fireEvent.touchStart(band, start);
+    fireEvent.touchEnd(band, end(100));
+    expect(navCalls).toEqual(['next']);
+    navCalls.length = 0;
+    cal.removeChild(band);
     const dragging = document.createElement('div');
     dragging.className = 'fc-event-dragging';
     cal.appendChild(dragging);
@@ -612,6 +620,20 @@ describe('saved time zone drives the grid', () => {
     await userEvent.click(screen.getByRole('button', { name: /drag planning/i }));
     const utc = tz === 'Asia/Tokyo' ? ['2026-10-06T00:15:00.000Z', '2026-10-06T01:15:00.000Z'] : ['2026-10-06T13:15:00.000Z', '2026-10-06T14:15:00.000Z'];
     await waitFor(() => expect(mocked.updateEvent).toHaveBeenCalledWith('e1', { start_at: utc[0], end_at: utc[1] }));
+  });
+});
+
+describe('event tooltip follows the saved zone', () => {
+  afterEach(() => { delete (window as any).__dropStr; });
+  test('title is re-rendered in the new zone after the time zone changes', async () => {
+    mocked.getSettings.mockResolvedValue({ timezone: 'Asia/Tokyo' });
+    renderView();
+    const evt = await screen.findByTestId('event-e1');
+    await waitFor(() => expect(evt.title).toContain('7:00'));
+    mocked.getSettings.mockResolvedValue({ timezone: 'America/New_York' });
+    mocked.updateEvent.mockResolvedValue(ev());
+    await userEvent.click(screen.getByRole('button', { name: /drag planning/i }));
+    await waitFor(() => expect(screen.getByTestId('event-e1').title).toContain('6:00'));
   });
 });
 

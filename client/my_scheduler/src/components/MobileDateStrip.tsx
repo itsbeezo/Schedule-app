@@ -22,6 +22,7 @@ export default function MobileDateStrip({ selected, today = new Date(), onSelect
 
   useSwipe(weekRef, { onSwipe: (dir) => onSelect(addDays(selected, dir === 'next' ? 7 : -7)) });
 
+  const shown = open ? cursor : selected; // header month follows the picker while open
   const days = weekDays(selected);
   const weekLabel = days.some((d) => isSameDay(d, today)) ? 'This week' : `Week of ${fullDateLabel(days[0])}`;
 
@@ -46,8 +47,8 @@ export default function MobileDateStrip({ selected, today = new Date(), onSelect
     <div className="date-strip" onKeyDown={(e) => { if (e.key === 'Escape' && open) { setOpen(false); toggleRef.current?.focus(); } }}>
       <div className="date-strip__header">
         <button ref={toggleRef} type="button" className="date-strip__title" aria-expanded={open} aria-controls="date-strip-picker"
-          aria-label={`${monthTitle(selected)}, ${open ? 'close' : 'choose'} date picker`} onClick={() => setOpen((o) => !o)}>
-          {monthTitle(selected)}
+          aria-label={`${monthTitle(shown)}, ${open ? 'close' : 'choose'} date picker`} onClick={() => setOpen((o) => !o)}>
+          {monthTitle(shown)}
           <span className="date-strip__chevron" aria-hidden="true">▾</span>
         </button>
         <button type="button" className="btn date-strip__today" onClick={() => { setOpen(false); onToday(); }}>Today</button>

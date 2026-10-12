@@ -47,3 +47,12 @@ test('parts carry conflict-icon__bang and conflict-icon__clock classes', () => {
   expect(svg.querySelector('[data-part="bar"]')!.classList.contains('conflict-icon__bang')).toBe(true);
   expect(svg.querySelector('[data-part="dot"]')!.classList.contains('conflict-icon__bang')).toBe(true);
 });
+
+test('the dot has no stroke and its diameter equals the bar stroke width', () => {
+  const { container } = render(<ConflictIcon />);
+  const svg = container.querySelector('svg')!;
+  const dot = svg.querySelector('[data-part="dot"]')!;
+  expect(dot.getAttribute('stroke')).toBe('none');
+  expect(dot.getAttribute('fill')).toBe('currentColor');
+  expect(Number(dot.getAttribute('r')) * 2).toBe(Number(svg.getAttribute('stroke-width')));
+});

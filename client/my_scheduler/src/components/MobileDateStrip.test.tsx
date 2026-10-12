@@ -37,7 +37,7 @@ test('the title expands a month picker; picking a far date selects it and collap
   const picker = screen.getByRole('group', { name: 'Choose a date' });
   await userEvent.click(within(picker).getByRole('button', { name: 'Next month' }));
   await userEvent.click(within(picker).getByRole('button', { name: 'Next month' }));
-  expect(within(picker).getByText('December 2026')).toBeInTheDocument();
+  expect(within(picker).getByRole('button', { name: 'Close month picker, December 2026' })).toBeInTheDocument();
   await userEvent.click(within(picker).getByRole('button', { name: 'Tuesday, December 22, 2026' }));
   expect(onSelect).toHaveBeenCalledWith(new Date(2026, 11, 22));
   expect(screen.queryByRole('group', { name: 'Choose a date' })).toBeNull();
@@ -50,6 +50,38 @@ test('Escape closes the picker and returns focus to the title', async () => {
   await userEvent.click(toggle);
   await userEvent.keyboard('{Escape}');
   expect(screen.queryByRole('group', { name: 'Choose a date' })).toBeNull();
+  expect(toggle).toHaveFocus();
+});
+
+test('while open, the header title is masked (kept for layout, out of the a11y tree and tab order) and the picker title is a visible close button', async () => {
+  setup();
+  const toggle = screen.getByRole('button', { name: /October 2026, choose date picker/ });
+  expect(toggle).not.toHaveClass('date-strip__title--masked');
+  await userEvent.click(toggle);
+  expect(toggle).toHaveClass('date-strip__title--masked');
+  expect(toggle).toHaveAttribute('aria-hidden', 'true');
+  expect(toggle).toHaveAttribute('tabindex', '-1');
+  expect(screen.queryByRole('button', { name: /choose date picker/ })).toBeNull();
+  const title = screen.getByRole('button', { name: 'Close month picker, October 2026' });
+  expect(title).toHaveClass('date-strip__picker-title');
+  expect(title).toHaveAttribute('aria-expanded', 'true');
+  expect(title.querySelector('.date-strip__chevron')!.textContent).toBe('▾');
+  expect(title).toHaveFocus();
+  await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
+  expect(screen.getByRole('button', { name: 'Close month picker, November 2026' })).toBeInTheDocument();
+  expect(document.querySelector('.date-strip__sr-only')).toHaveTextContent('November 2026');
+  await userEvent.click(screen.getByRole('button', { name: 'Close month picker, November 2026' }));
+  expect(screen.queryByRole('group', { name: 'Choose a date' })).toBeNull();
+  expect(toggle).not.toHaveClass('date-strip__title--masked');
+  expect(toggle).not.toHaveAttribute('aria-hidden');
+  expect(toggle).toHaveFocus();
+});
+
+test('picking a date returns focus to the header title', async () => {
+  setup();
+  const toggle = screen.getByRole('button', { name: /choose date picker/ });
+  await userEvent.click(toggle);
+  await userEvent.click(screen.getByRole('button', { name: 'Tuesday, October 20, 2026' }));
   expect(toggle).toHaveFocus();
 });
 
@@ -97,6 +129,6 @@ test('header title follows the picker month while open and reverts when closed',
   await userEvent.click(toggle);
   await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
   expect(text()).toBe('November 2026');
-  await userEvent.click(toggle);
+  await userEvent.click(screen.getByRole('button', { name: 'Close month picker, November 2026' }));
   expect(text()).toBe('October 2026');
 });

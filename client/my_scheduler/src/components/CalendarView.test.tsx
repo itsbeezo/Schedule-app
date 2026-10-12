@@ -214,6 +214,8 @@ describe('narrow (phone) default view', () => {
     await screen.findByTestId('calendar');
     navCalls.length = 0;
     await userEvent.click(screen.getByRole('button', { name: /choose date picker/ }));
+    expect(screen.queryByRole('button', { name: /choose date picker/ })).toBeNull(); // header title masked while open
+    expect(screen.getByRole('button', { name: /^Close month picker, / })).toHaveFocus();
     await userEvent.click(screen.getByRole('button', { name: 'Next month' }));
     await userEvent.click(screen.getByRole('button', { name: 'Tuesday, November 10, 2026' }));
     expect(navCalls).toEqual(['gotoDate:2026-11-10']);

@@ -16,9 +16,26 @@ export default function MobileDateStrip({ selected, today = new Date(), onSelect
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState(selected); // month shown in the picker
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const pickerTitleRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+  const refocusHeader = useRef(false);
   const weekRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (!open) setCursor(selected); }, [open, selected]);
+
+  // Focus handoff: into the picker title on open; back to the header title when the picker closes
+  // by its title, Escape, or picking a date (not when Today is pressed).
+  useEffect(() => {
+    if (open && !wasOpen.current) pickerTitleRef.current?.focus();
+    if (!open && wasOpen.current && refocusHeader.current) toggleRef.current?.focus();
+    wasOpen.current = open;
+    if (!open) refocusHeader.current = false;
+  }, [open]);
+
+  function closePicker(refocus: boolean) {
+    refocusHeader.current = refocus;
+    setOpen(false);
+  }
 
   useSwipe(weekRef, { onSwipe: (dir) => onSelect(addDays(selected, dir === 'next' ? 7 : -7)) });
 
@@ -28,7 +45,7 @@ export default function MobileDateStrip({ selected, today = new Date(), onSelect
 
   function pick(d: Date) {
     onSelect(d);
-    setOpen(false);
+    closePicker(true);
   }
 
   function dayButton(d: Date, extraClass = '') {
@@ -44,20 +61,26 @@ export default function MobileDateStrip({ selected, today = new Date(), onSelect
   }
 
   return (
-    <div className="date-strip" onKeyDown={(e) => { if (e.key === 'Escape' && open) { setOpen(false); toggleRef.current?.focus(); } }}>
+    <div className="date-strip" onKeyDown={(e) => { if (e.key === 'Escape' && open) closePicker(true); }}>
       <div className="date-strip__header">
-        <button ref={toggleRef} type="button" className="date-strip__title" aria-expanded={open} aria-controls="date-strip-picker"
-          aria-label={`${monthTitle(shown)}, ${open ? 'close' : 'choose'} date picker`} onClick={() => setOpen((o) => !o)}>
+        <button ref={toggleRef} type="button" className={open ? 'date-strip__title date-strip__title--masked' : 'date-strip__title'}
+          aria-expanded={open} aria-controls="date-strip-picker" aria-hidden={open ? true : undefined} tabIndex={open ? -1 : undefined}
+          aria-label={`${monthTitle(shown)}, ${open ? 'close' : 'choose'} date picker`} onClick={() => setOpen(true)}>
           {monthTitle(shown)}
           <span className="date-strip__chevron" aria-hidden="true">▾</span>
         </button>
-        <button type="button" className="btn date-strip__today" onClick={() => { setOpen(false); onToday(); }}>Today</button>
+        <button type="button" className="btn date-strip__today" onClick={() => { closePicker(false); onToday(); }}>Today</button>
       </div>
       {open ? (
         <div id="date-strip-picker" className="date-strip__picker" role="group" aria-label="Choose a date">
           <div className="date-strip__picker-nav">
             <button type="button" className="btn" aria-label="Previous month" onClick={() => setCursor(addMonths(cursor, -1))}>{'‹'}</button>
-            <span className="date-strip__picker-title" aria-live="polite">{monthTitle(cursor)}</span>
+            <button ref={pickerTitleRef} type="button" className="date-strip__picker-title" aria-expanded="true" aria-controls="date-strip-picker"
+              aria-label={`Close month picker, ${monthTitle(cursor)}`} onClick={() => closePicker(true)}>
+              {monthTitle(cursor)}
+              <span className="date-strip__chevron" aria-hidden="true">▾</span>
+            </button>
+            <span className="date-strip__sr-only" aria-live="polite">{monthTitle(cursor)}</span>
             <button type="button" className="btn" aria-label="Next month" onClick={() => setCursor(addMonths(cursor, 1))}>{'›'}</button>
           </div>
           <div className="date-strip__dow-row" aria-hidden="true">

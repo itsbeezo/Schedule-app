@@ -1,0 +1,43 @@
+// Phone month-picker shots + 4x conflict badge zoom against the real build with mocked /api. APP_URL default :3301
+import { chromium } from 'playwright';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const here = path.dirname(fileURLToPath(import.meta.url));
+const base = process.env.APP_URL ?? 'http://localhost:3301';
+const ev = (id, title, s, e, color = null) => ({ id, title, start_at: `2026-10-07T${s}:00Z`, end_at: `2026-10-07T${e}:00Z`, kind: 'event', color, notes: null, source: 'manual' });
+const events = [ev('1', 'Standup', '09:00', '09:30'), ev('2', 'Call with Alex', '09:00', '09:30', '#9B6BFF')];
+const conflicts = { active: [{ eventAId: '1', eventBId: '2', overlapStart: '2026-10-07T09:00:00Z', overlapEnd: '2026-10-07T09:30:00Z' }], ignored: [] };
+const route = (p) => p.startsWith('/api/events') ? events : p.startsWith('/api/conflicts') ? conflicts : [];
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+for (const width of [390, 360]) {
+  const ctx = await browser.newContext({ viewport: { width, height: 844 }, timezoneId: 'UTC', deviceScaleFactor: 2 });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(new Date('2026-10-07T09:50:00Z'));
+  await page.route('**/api/**', (r) => r.fulfill({ json: route(new URL(r.request().url()).pathname) }));
+  await page.goto(base);
+  await page.waitForSelector('.fc-timegrid-event');
+  await page.waitForTimeout(400);
+  const gridTop = () => page.locator('.calendar-grid').evaluate((e) => Math.round(e.getBoundingClientRect().top));
+  const tClosed = await gridTop();
+  await page.screenshot({ path: path.join(here, 'screenshots', `picker-closed-${width}.png`) });
+  await page.locator('.date-strip__title').click();
+  await page.waitForSelector('.date-strip__picker');
+  await page.waitForTimeout(250);
+  console.log(width, 'gridTop closed/open', tClosed, await gridTop(), 'overflow', await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth));
+  console.log(width, 'visible month texts:', await page.evaluate(() => [...document.querySelectorAll('.date-strip__title,.date-strip__picker-title')].map((e) => [e.className, getComputedStyle(e).visibility, e.getBoundingClientRect().width|0])));
+  await page.screenshot({ path: path.join(here, 'screenshots', `picker-open-${width}.png`) });
+  await page.getByRole('button', { name: 'Next month' }).click();
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: path.join(here, 'screenshots', `picker-open-paged-${width}.png`) });
+  await ctx.close();
+}
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: 'UTC', deviceScaleFactor: 4 });
+const page = await ctx.newPage();
+await page.clock.setFixedTime(new Date('2026-10-07T09:50:00Z'));
+await page.route('**/api/**', (r) => r.fulfill({ json: route(new URL(r.request().url()).pathname) }));
+await page.goto(base);
+await page.waitForSelector('.conflict-badge');
+const b = page.locator('.conflict-badge').first();
+await b.screenshot({ path: path.join(here, 'screenshots', 'conflict-badge-4x.png') });
+console.log('bar stroke-width/dot box:', await page.evaluate(() => { const d = document.querySelector('circle.conflict-icon__bang'); const bar = document.querySelector('path.conflict-icon__bang'); const bb = d.getBoundingClientRect(); return { dotPx: bb.width, dotStroke: getComputedStyle(d).stroke, barW: getComputedStyle(bar).strokeWidth, barBox: bar.getBoundingClientRect().width }; }));
+await browser.close();

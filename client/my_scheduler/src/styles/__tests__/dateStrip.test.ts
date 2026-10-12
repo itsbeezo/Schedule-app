@@ -49,8 +49,32 @@ test('the day header is visually hidden on the phone day view, not display:none 
   expect(m).not.toMatch(/display:\s*none/);
 });
 
-test('the picker month title is visually hidden (clip), kept in the DOM, and not display:none', () => {
+test('the header title is masked while open: visibility hidden (keeps layout space), never display:none', () => {
+  const r = rule('.date-strip__title--masked');
+  expect(r).toMatch(/visibility:\s*hidden/);
+  expect(r).not.toMatch(/display:\s*none/);
+});
+
+test('the picker title is visible, centered between the arrows, 44px, header type, instant, with focus ring', () => {
   const r = rule('.date-strip__picker-title');
+  expect(r).not.toMatch(/clip|position:\s*absolute|overflow:\s*hidden|width:\s*1px/);
+  expect(r).toMatch(/flex:\s*1/);
+  expect(r).toMatch(/justify-content:\s*center/);
+  expect(px(r, 'min-height')).toBeGreaterThanOrEqual(44);
+  const h = rule('.date-strip__title');
+  for (const prop of ['font-size', 'font-weight', 'color']) {
+    expect(r.match(new RegExp(`${prop}:\\s*([^;]+);`))![1]).toBe(h.match(new RegExp(`${prop}:\\s*([^;]+);`))![1]);
+  }
+  expect(r).toMatch(/border:\s*0/);
+  expect(r).toMatch(/transition:\s*none/);
+  expect(r).not.toMatch(/opacity/);
+  expect(css).toMatch(/\.date-strip__picker-title:hover/);
+  expect(css).toMatch(/\.date-strip__picker-title:focus-visible\s*\{[^}]*var\(--focus-ring\)/);
+  expect(css).toMatch(/\.date-strip__picker-title\[aria-expanded='true'\] \.date-strip__chevron\s*\{[^}]*rotate\(180deg\)/);
+});
+
+test('the sr-only live span is visually hidden with the clip technique, not display:none', () => {
+  const r = rule('.date-strip__sr-only');
   expect(r).toMatch(/clip/);
   expect(r).not.toMatch(/display:\s*none/);
 });

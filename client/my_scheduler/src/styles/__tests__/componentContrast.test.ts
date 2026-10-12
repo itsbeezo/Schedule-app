@@ -82,8 +82,14 @@ test('the conflict token defaults to coral and the badge and outline read only f
 test('the "!" and the clock use the same dark on-conflict color: no amber accent, halo or pill', () => {
   expect(t['--color-conflict-bang']).toBeUndefined();
   const comps = fs.readFileSync(path.join(__dirname, '..', 'components.css'), 'utf8');
-  expect(comps).toMatch(/\.conflict-icon__clock,\s*\.conflict-icon__bang\s*\{[^}]*stroke:\s*var\(--color-on-conflict\)/);
-  expect(/^\.conflict-icon__bang\s*\{([^}]*)\}/m.exec(comps)![1]).toMatch(/fill:\s*var\(--color-on-conflict\)/);
+  expect(comps).toMatch(/\.conflict-icon__clock\s*\{[^}]*stroke:\s*var\(--color-on-conflict\)/);
+  expect(/^path\.conflict-icon__bang\s*\{([^}]*)\}/m.exec(comps)![1]).toMatch(/stroke:\s*var\(--color-on-conflict\)/);
+  const dot = /^circle\.conflict-icon__bang\s*\{([^}]*)\}/m.exec(comps)![1];
+  expect(dot).toMatch(/fill:\s*var\(--color-on-conflict\)/);
+  expect(dot).toMatch(/stroke:\s*none/); // a stroke would inflate the dot past the bar width
+  // no bare class rule may stroke the dot (it would override the stroke="none" attribute)
+  expect(comps).not.toMatch(/^\.(conflict-badge--ignored )?\.?conflict-icon__bang\s*[,{][^}]*stroke:\s*(?!none)/m);
+  expect(/\.conflict-badge--ignored circle\.conflict-icon__bang\s*\{([^}]*)\}/.exec(comps)![1]).toMatch(/stroke:\s*none/);
   expect(comps).not.toMatch(/drop-shadow|conflict-bang|conflict-icon__pill/);
   expect(contrastRatio(t['--color-on-coral'], t['--color-coral'])).toBeGreaterThanOrEqual(TEXT);
 });

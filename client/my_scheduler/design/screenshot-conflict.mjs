@@ -8,7 +8,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 const jobs = [];
 for (const c of ['coral', 'red', 'amber']) for (const theme of ['dark', 'light']) jobs.push([c, theme, 'plain', `conflict-${c}-${theme}.png`]);
 for (const [c, theme, bang, file] of jobs) {
-  const page = await browser.newPage({ viewport: { width: 1100, height: 520 }, deviceScaleFactor: 2 });
+  const page = await browser.newPage({ viewport: { width: 1100, height: 760 }, deviceScaleFactor: 2 });
   await page.goto(pathToFileURL(path.join(here, 'mockups/conflict-colors.html')).href + `?c=${c}&theme=${theme}&bang=${bang}`);
   await page.waitForLoadState('networkidle');
   await page.screenshot({ path: path.join(here, 'screenshots', file), fullPage: true });

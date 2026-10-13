@@ -41,3 +41,21 @@ pill, no extra token. `.conflict-icon__clock` and `.conflict-icon__bang` stay as
 on-conflict, so the existing markup is valid. Ignored badges render the icon in the muted color. Red and amber remain
 options via `data-conflict-color`. Shots: `conflict-{coral,red,amber}-{dark,light}.png` (regenerate with
 `node design/screenshot-conflict.mjs`).
+
+## Icon-only badge, top-left (owner-approved)
+
+The badge is icon-only everywhere (timegrid, month chips, "+N more" popover). The word stays in the DOM and in the
+aria-label; `font-size: 0` on `.conflict-badge` hides it. In time-grid blocks CSS anchors the badge top-left, before the
+time (grid, with a flex row for blocks <= 40px and the title taking the time's place in narrow blocks), so a later
+overlapping block, which covers the right side of an earlier one, can never hide it. The component's markup order
+(badge first for <= 30 min, last otherwise) is unchanged. Size: 14px tall, 16px wide, 10px svg, so it fits inside a
+15-minute (16px) block; the 24px+ hit area comes from `::after { inset: -6px }` (28x26). Month chips keep their placement.
+
+Active vs ignored/allowed without colour: active is a FILLED coral pill; ignored/allowed is a HOLLOW pill with a 1px
+muted outline and muted icon strokes on the surface color. The event itself also changes shape (dashed outline, calm fill),
+and the aria-label says Conflict/Ignored/Allowed. Icon shape is the same in both, so the cue is filled vs hollow plus the
+dashed block; the spoken label carries the exact state.
+
+Evidence: mockups/conflict-colors.html (`node design/screenshot-conflict.mjs`); real app with mocked API
+(`node design/screenshot-conflict-app.mjs`, serve ./build on :3301): screenshots/conflict-app-desktop-1280.png and
+conflict-app-phone-390*.png (60, 30, 15 min pairs, narrow 3-way, ignored). Tests: styles/__tests__/conflictBadge.test.ts.

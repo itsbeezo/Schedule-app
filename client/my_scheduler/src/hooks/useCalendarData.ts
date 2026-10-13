@@ -58,5 +58,5 @@ export function useCalendarData() {
     void reload();
   }, [reload]);
 
-  return { events, workHours, zones, timezone, conflicts, range, setRange, loadError, reload, setEvents };
+  return { events, workHours, zones, timezone, conflicts, range, setRange, loadError, reload };
 }

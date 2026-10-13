@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as api from '../api/client';
 import { ConflictIgnore, ConflictZone, WorkHour } from '../api/types';
 import { DEFAULT_SCROLL_TIME, getDefaultEventColor, getScrollTime, setDefaultEventColor, setScrollTime } from '../lib/preferences';
-import { browserTimeZone, isValidTimeZone, supportedTimeZones } from '../lib/timezone';
+import { browserTimeZone, supportedTimeZones } from '../lib/timezone';
 import { isReservedColor } from '../styles/reservedColors';
 import ColorPicker from './ColorPicker';
 import { useToast } from './Toast';
@@ -31,11 +31,24 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
   const [color, setColor] = useState<string | null>(getDefaultEventColor());
   const [scrollTime, setScrollTimeState] = useState(() => getScrollTime().slice(0, 5));
   const deviceZone = browserTimeZone();
-  const zoneOptions = useMemo(() => supportedTimeZones(), []);
+  const baseZones = useMemo(() => supportedTimeZones(), []);
   const [savedZone, setSavedZone] = useState<string | null>(null);
   const [zoneDraft, setZoneDraft] = useState('');
   const [zoneError, setZoneError] = useState<string | null>(null);
   const [zoneSaving, setZoneSaving] = useState(false);
+  // Every supported zone, plus the draft / saved / device zones if they are aliases missing from the list,
+  // so the select never shows blank. UTC first, then one optgroup per region (text before the first "/").
+  const zoneGroups = useMemo(() => {
+    const all = new Set(baseZones);
+    [zoneDraft, savedZone, deviceZone].forEach((z) => { if (z) all.add(z); });
+    const groups = new Map<string, string[]>();
+    Array.from(all).sort().forEach((z) => {
+      const region = z.includes('/') ? z.slice(0, z.indexOf('/')) : '';
+      if (z === 'UTC') return;
+      groups.set(region, [...(groups.get(region) ?? []), z]);
+    });
+    return Array.from(groups.entries()).sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
+  }, [baseZones, zoneDraft, savedZone, deviceZone]);
   const fmt = (iso: string) => fmtIn(iso, savedZone || deviceZone);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -120,11 +133,8 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
   }
 
   async function saveZone() {
-    const tz = zoneDraft.trim();
-    if (!isValidTimeZone(tz)) {
-      setZoneError('Choose a valid time zone, such as America/New_York.');
-      return;
-    }
+    const tz = zoneDraft;
+    if (!tz) return;
     setZoneError(null);
     setZoneSaving(true);
     try {
@@ -188,27 +198,30 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
         <div className="field">
           <label className="field__label" htmlFor="settings-time-zone">Time zone</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-            <input
+            <select
               id="settings-time-zone"
               className="field__input"
-              list="settings-time-zone-options"
               value={zoneDraft}
-              autoComplete="off"
-              spellCheck={false}
               aria-invalid={zoneError ? true : undefined}
               aria-describedby="settings-time-zone-hint"
               onChange={(e) => {
                 setZoneDraft(e.target.value);
                 setZoneError(null);
               }}
-            />
-            <datalist id="settings-time-zone-options">
-              {zoneOptions.map((z) => <option key={z} value={z} />)}
-            </datalist>
+            >
+              <option value="UTC">UTC</option>
+              {zoneGroups.map(([region, list]) => region === ''
+                ? list.map((z) => <option key={z} value={z}>{z}</option>)
+                : (
+                  <optgroup key={region} label={region}>
+                    {list.map((z) => <option key={z} value={z}>{z.slice(region.length + 1).replace(/_/g, ' ')}</option>)}
+                  </optgroup>
+                ))}
+            </select>
             <button
               type="button"
               className="btn btn--primary"
-              disabled={zoneSaving || savedZone === null || zoneDraft.trim() === savedZone}
+              disabled={zoneSaving || savedZone === null || zoneDraft === savedZone}
               onClick={() => void saveZone()}
             >
               Save time zone

@@ -132,3 +132,36 @@ test('header title follows the picker month while open and reverts when closed',
   await userEvent.click(screen.getByRole('button', { name: 'Close month picker, November 2026' }));
   expect(text()).toBe('October 2026');
 });
+
+describe('crossing week boundaries', () => {
+  const dayNames = () => within(screen.getByRole('group', { name: /week/i })).getAllByRole('button').map((b) => b.getAttribute('aria-label'));
+
+  test('selecting the day after a Saturday shows the next week', () => {
+    const { rerender } = render(<MobileDateStrip selected={new Date(2026, 9, 17)} today={today} onSelect={jest.fn()} onToday={jest.fn()} />);
+    expect(dayNames()[0]).toBe('Sunday, October 11, 2026');
+    expect(dayNames()[6]).toBe('Saturday, October 17, 2026');
+    rerender(<MobileDateStrip selected={new Date(2026, 9, 18)} today={today} onSelect={jest.fn()} onToday={jest.fn()} />);
+    expect(dayNames()[0]).toBe('Sunday, October 18, 2026');
+    expect(dayNames()[6]).toBe('Saturday, October 24, 2026');
+  });
+
+  test('selecting the day before a Sunday shows the previous week', () => {
+    const { rerender } = render(<MobileDateStrip selected={new Date(2026, 9, 11)} today={today} onSelect={jest.fn()} onToday={jest.fn()} />);
+    expect(dayNames()[0]).toBe('Sunday, October 11, 2026');
+    rerender(<MobileDateStrip selected={new Date(2026, 9, 10)} today={today} onSelect={jest.fn()} onToday={jest.fn()} />);
+    expect(dayNames()[0]).toBe('Sunday, October 4, 2026');
+    expect(dayNames()[6]).toBe('Saturday, October 10, 2026');
+  });
+
+  test('swiping the strip next from a Saturday selects exactly 7 days later; prev selects 7 days earlier', () => {
+    const onSelect = jest.fn();
+    render(<MobileDateStrip selected={new Date(2026, 9, 17)} today={today} onSelect={onSelect} onToday={jest.fn()} />);
+    const week = screen.getByRole('group', { name: /week/i });
+    fireEvent.touchStart(week, { touches: [{ clientX: 300, clientY: 20 }] });
+    fireEvent.touchEnd(week, { touches: [], changedTouches: [{ clientX: 100, clientY: 22 }] });
+    expect(onSelect).toHaveBeenLastCalledWith(new Date(2026, 9, 24));
+    fireEvent.touchStart(week, { touches: [{ clientX: 100, clientY: 20 }] });
+    fireEvent.touchEnd(week, { touches: [], changedTouches: [{ clientX: 300, clientY: 22 }] });
+    expect(onSelect).toHaveBeenLastCalledWith(new Date(2026, 9, 10));
+  });
+});

@@ -44,6 +44,6 @@ test('popover title, close button and event rows are readable and reachable', ()
   expect(css).toMatch(/\.fc-more-popover \.fc-popover-title[^{]*\{[^}]*color:\s*var\(--color-text\)/);
   expect(parseInt(rule('.fc-more-popover .fc-popover-close').match(/width:\s*(\d+)px/)![1], 10)).toBeGreaterThanOrEqual(32);
   expect(css).toMatch(/\.fc-more-popover \.fc-popover-close:focus-visible/);
-  expect(css).toMatch(/\.fc-more-popover \.fc-daygrid-event \.conflict-badge\s*\{[^}]*font-size:\s*var\(--text-sm\)/);
+  expect(css).toMatch(/\.fc-more-popover \.fc-daygrid-event \.conflict-badge\s*\{[^}]*padding:/);
   expect(contrastRatio(t['--color-text'], t['--color-raised'])).toBeGreaterThanOrEqual(4.5);
 });

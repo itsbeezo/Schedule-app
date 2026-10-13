@@ -70,9 +70,11 @@
 }
 
 .conflict-badge {
-  display: inline-flex; align-items: center; gap: var(--space-half); padding: 2px 8px;
+  /* Icon-only everywhere (owner decision). The word ("Conflict"/"Allowed"/"Ignored") stays in the DOM and in the
+     aria-label for assistive tech; font-size 0 hides the bare text node without touching the component. */
+  display: inline-flex; align-items: center; justify-content: center; gap: 0; padding: 2px 4px; box-sizing: border-box;
   background: var(--color-conflict); color: var(--color-on-conflict); border: 0; border-radius: var(--radius-pill);
-  font-size: var(--text-sm); font-weight: 700; cursor: pointer;
+  font-size: 0; font-weight: 700; cursor: pointer; line-height: 1;
 }
 /* Icon parts (ConflictIcon.tsx). Owner decision: clock and "!" are the same dark on-conflict color, no halo, no pill. */
 .conflict-icon__clock { stroke: var(--color-on-conflict); }

@@ -25,21 +25,25 @@
   document.getElementById('h').textContent = `Conflict color: ${c}, ${theme} page`;
   // Mirrors the frontend ConflictIcon markup: clock (circle + hands) left, vertically centered "!" right.
   const icon = '<svg width="16" height="14" viewBox="0 0 18 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">'
-    + '<g class="conflict-icon__clock"><circle cx="7" cy="8" r="5.5"/><path d="M7 5v3l2 1.5"/></g>'
-    + '<path class="conflict-icon__bang" d="M15 3.5v5.5"/><circle class="conflict-icon__bang" cx="15" cy="12" r="0.75"/></svg>';
-  const badge = (ignored) => `<button class="conflict-badge${ignored ? ' conflict-badge--ignored' : ''}" type="button" aria-label="Conflict">${icon}${ignored ? 'Ignored' : 'Conflict'}</button>`;
+    + '<circle class="conflict-icon__clock" cx="7" cy="8.5" r="5.5"/><path class="conflict-icon__clock" d="M7 5.5v3l2 1.5"/>'
+    + '<path class="conflict-icon__bang" d="M16 3.75v6.5"/><circle class="conflict-icon__bang" cx="16" cy="13.25" r="0.75"/></svg>';
+  const badge = (ignored) => `<button class="conflict-badge${ignored ? ' conflict-badge--ignored' : ''}" type="button" aria-label="Conflict">${icon}${ignored ? "Ignored" : "Conflict"}</button>`;
   const colors = { 'royal (default)': '#4A63F0', indigo: '#3B4FD6', violet: '#7B5CD6', 'deep violet': '#5B3FC4', sky: '#2F8FD6', periwinkle: '#6C7DF5' };
   const root = document.getElementById('root');
   const addRow = (label, h, w, make) => {
     const row = document.createElement('div'); row.className = 'row';
     for (const [name, bg] of Object.entries(colors)) {
       const cell = document.createElement('div'); cell.className = 'cell';
-      cell.innerHTML = `${label}: ${name}<div class="col" style="width:${w}px"><div class="fc-timegrid-event fc-event cal-event cal-event--conflict" style="height:${h}px;background-color:${bg}"><div class="fc-event-main">${make()}</div></div></div>`;
+      cell.innerHTML = `${label}: ${name}<div class="col" style="width:${w}px"><div class="fc-timegrid-event ${h <= 40 ? 'fc-timegrid-event-short ' : ''}fc-event cal-event cal-event--conflict" style="height:${h}px;background-color:${bg}"><div class="fc-event-main">${make()}</div></div></div>`;
       row.appendChild(cell);
     }
     root.appendChild(row);
   };
-  addRow('60 min, full badge', 80, 150, () => `<div><div class="fc-event-time">1:00 - 2:00</div><div class="fc-event-title">Lunch</div>${badge()}</div>`);
-  addRow('30 min, compact badge', 40, 150, () => `<div>${badge()}<div class="fc-event-time">1:00 - 1:30</div><div class="fc-event-title">Stand-up</div></div>`);
-  addRow('30 min narrow, icon only', 40, 100, () => `<div>${badge()}<div class="fc-event-title">Stand-up</div></div>`);
+  // Icon-only badge, top-left. 60 min keeps the badge LAST in the markup (as the component renders it) to prove CSS moves it first.
+  addRow('60 min', 80, 150, () => `<div><div class="fc-event-time">1:00 - 2:00</div><div class="fc-event-title">Lunch</div>${badge()}</div>`);
+  addRow('30 min', 40, 150, () => `<div>${badge()}<div class="fc-event-time">1:00 - 1:30</div><div class="fc-event-title">Stand-up</div></div>`);
+  addRow('15 min (16px)', 16, 150, () => `<div>${badge()}<div class="fc-event-time">1:00</div><div class="fc-event-title">Stand-up</div></div>`);
+  addRow('narrow 60 min', 80, 100, () => `<div><div class="fc-event-time">1:00 - 2:00</div><div class="fc-event-title">Stand-up review</div>${badge()}</div>`);
+  addRow('narrow 30 min', 40, 100, () => `<div>${badge()}<div class="fc-event-title">Stand-up</div></div>`);
+  addRow('ignored (hollow, muted outline) 30 min', 40, 150, () => `<div>${badge(true)}<div class="fc-event-time">1:00 - 1:30</div><div class="fc-event-title">Stand-up</div></div>`);
 </script></body></html>

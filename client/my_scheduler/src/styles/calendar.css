@@ -72,10 +72,27 @@
   .fc .fc-event-time { display: none; }
   .fc .fc-event-main-frame, .fc .fc-event-title-container, .fc .fc-event-main > div { min-width: 0; overflow: hidden; }
 }
-/* Compact conflict badge: clock and "!" icon only. The label stays in the DOM (aria-label has the full text);
-   font-size 0 hides the bare text node without touching the component. */
-@container (max-height: 40px) { .fc .conflict-badge { font-size: 0; gap: 0; padding: 2px 4px; } }
-@container (max-width: 120px) { .fc .conflict-badge { font-size: 0; gap: 0; padding: 2px 4px; } }
+/* Conflict badge in time-grid blocks: icon only (components.css hides the word), anchored TOP-LEFT before the time
+   so a later overlapping block, which always covers the right side of an earlier one, can never hide it.
+   The component puts the badge first on <=30 min events and last on longer ones; CSS places it first either way.
+   Size: 14px tall (svg 10px + padding) so it fits inside a 15-minute block (16px) without overhanging. */
+.fc .fc-timegrid-event .conflict-badge { height: 14px; min-width: 16px; padding: 0 2px; align-self: center; flex: none; order: -1; }
+.fc .fc-timegrid-event .conflict-badge svg { height: 10px; width: auto; display: block; }
+.fc .fc-timegrid-event .fc-event-main > div:has(> .conflict-badge) {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 4px; align-items: center;
+}
+.fc .fc-timegrid-event .fc-event-main > div > .conflict-badge { grid-column: 1; grid-row: 1; }
+.fc .fc-timegrid-event .fc-event-main > div:has(> .conflict-badge) > .fc-event-time { grid-column: 2; grid-row: 1; }
+.fc .fc-timegrid-event .fc-event-main > div:has(> .conflict-badge) > .fc-event-title { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+/* compact (<=40px) blocks: one flex row, badge then time then title (title ellipsizes, see above) */
+@container (max-height: 40px) {
+  .fc .fc-timegrid-event .fc-event-main > div:has(> .conflict-badge) { display: flex; }
+  .fc .fc-timegrid-event .fc-event-main > div:has(> .conflict-badge) > .fc-event-title { grid-column: auto; grid-row: auto; }
+}
+/* narrow side-by-side blocks hide the time: the title takes its place beside the badge */
+@container (max-width: 120px) {
+  .fc .fc-timegrid-event .fc-event-main > div:has(> .conflict-badge) > .fc-event-title { grid-column: 2; grid-row: 1; }
+}
 
 /* disabled 'today' (already on today): FullCalendar fades it to .65 opacity, which dropped its label below 4.5:1 */
 .fc .fc-button:disabled { opacity: 1; color: var(--color-muted); }
@@ -118,7 +135,7 @@
   .fc .fc-daygrid-event .fc-event-time { display: none; }
   .fc .fc-daygrid-event .fc-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .fc .fc-daygrid-event, .fc .fc-daygrid-event > div { min-width: 0; overflow: hidden; }
-  .fc .fc-daygrid-event .conflict-badge { font-size: 0; gap: 0; padding: 2px 3px; flex: none; }
+  .fc .fc-daygrid-event .conflict-badge { padding: 2px 3px; flex: none; }
 }
 
 /* Month chips: badge always after the title (the component puts it first on half-hour events) */
@@ -165,7 +182,7 @@
 .fc-more-popover .fc-daygrid-event .fc-event-time { display: inline; }
 .fc-more-popover .fc-daygrid-event .fc-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .fc-more-popover .fc-daygrid-event > div { min-width: 0; }
-.fc-more-popover .fc-daygrid-event .conflict-badge { font-size: var(--text-sm); gap: var(--space-half); padding: 2px 8px; }
+.fc-more-popover .fc-daygrid-event .conflict-badge { padding: 2px 6px; }
 @media (max-width: 600px) {
   .fc .fc-daygrid-more-link { padding: 0 var(--space-half); }
   .fc-more-popover .fc-popover-close { width: 44px; height: 44px; }

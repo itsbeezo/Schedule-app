@@ -3,19 +3,45 @@ import { Pool } from 'pg';
 import { createPool, ensureUser, withUser } from '../src/db';
 import { assertDevDatabase } from './devGuard';
 
-function at(monday: Date, dayOffset: number, hour: number, minute: number): Date {
-  const d = new Date(monday);
-  d.setDate(d.getDate() + dayOffset);
-  d.setHours(hour, minute, 0, 0);
-  return d;
+/** Wall-clock parts of an instant in a zone. */
+function parts(date: Date, tz: string) {
+  const f = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric', weekday: 'short',
+  });
+  const o: Record<string, string> = {};
+  for (const p of f.formatToParts(date)) o[p.type] = p.value;
+  return o;
+}
+
+/** The instant at which the wall clock in `tz` reads y-m-d h:min (m is 1-based; overflow days roll over). */
+function zonedTime(tz: string, y: number, m: number, d: number, h: number, min: number): Date {
+  const wall = Date.UTC(y, m - 1, d, h, min);
+  let guess = wall;
+  for (let i = 0; i < 2; i++) {
+    const p = parts(new Date(guess), tz);
+    const seen = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
+    guess += wall - seen;
+  }
+  return new Date(guess);
+}
+
+/** Monday of the current week in `tz`, as calendar y/m/d. */
+function mondayIn(tz: string) {
+  const p = parts(new Date(), tz);
+  const dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(p.weekday);
+  return { y: +p.year, m: +p.month, d: +p.day - dow };
 }
 
 export async function seedDemo(pool: Pool, databaseUrl: string, userId: string, userTimezone: string) {
   await assertDevDatabase(pool, databaseUrl);
   await ensureUser(pool, userId, userTimezone);
-  const monday = new Date();
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-  monday.setHours(0, 0, 0, 0);
+  const tz = await withUser(pool, userId, async (c) =>
+    ((await c.query('SELECT timezone FROM users WHERE id = $1', [userId])).rows[0]?.timezone as string) ?? userTimezone
+  );
+  const monday = mondayIn(tz);
+  const at = (m: { y: number; m: number; d: number }, dayOffset: number, hour: number, minute: number) =>
+    zonedTime(tz, m.y, m.m, m.d + dayOffset, hour, minute);
 
   await withUser(pool, userId, async (c) => {
     await c.query('DELETE FROM events');

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CalendarView, { CALENDAR_OPTIONS, describeEvent, moreLinkLabel, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
+import CalendarView, { CALENDAR_OPTIONS, describeEvent, selectionRange, moreLinkLabel, toFullCalendarEvent, isNarrowViewport, NARROW_QUERY } from './CalendarView';
 import { ToastProvider } from './Toast';
 import * as api from '../api/client';
 import { navCalls, optionIdentities, scrollToTimeCalls } from '../test/fullCalendarMock';
@@ -598,7 +598,7 @@ describe('conflict popover anchors to the event block, not the badge', () => {
 });
 
 describe('saved time zone drives the grid', () => {
-  afterEach(() => { delete (window as any).__selectStr; delete (window as any).__dropStr; });
+  afterEach(() => { delete (window as any).__selectStr; delete (window as any).__drop; });
 
   test.each(['Asia/Tokyo', 'America/New_York'])('timeZone prop, create/drag ISO output and dialog wall clock in %s', async (tz) => {
     mocked.getSettings.mockResolvedValue({ timezone: tz });
@@ -606,7 +606,7 @@ describe('saved time zone drives the grid', () => {
     await screen.findByText('Planning');
     await waitFor(() => expect(screen.getByTestId('calendar')).toHaveAttribute('data-time-zone', tz));
     const off = tz === 'Asia/Tokyo' ? '+09:00' : '-04:00';
-    (window as any).__selectStr = { startStr: `2026-10-06T09:00:00${off}`, endStr: `2026-10-06T10:00:00${off}` };
+    (window as any).__selectStr = { start: new Date(`2026-10-06T09:00:00${off}`), end: new Date(`2026-10-06T10:00:00${off}`) };
     await userEvent.click(screen.getByText('mock-select'));
     await userEvent.click(within(screen.getByRole('toolbar')).getByRole('button', { name: /add event/i }));
     expect(screen.getByLabelText(/^start/i)).toHaveValue('2026-10-06T09:00');
@@ -618,15 +618,48 @@ describe('saved time zone drives the grid', () => {
     await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
     // dragging persists the instant from the ISO string
     mocked.updateEvent.mockResolvedValue(ev());
-    (window as any).__dropStr = { startStr: `2026-10-06T09:15:00${off}`, endStr: `2026-10-06T10:15:00${off}` };
+    (window as any).__drop = { start: new Date(`2026-10-06T09:15:00${off}`), end: new Date(`2026-10-06T10:15:00${off}`) };
     await userEvent.click(screen.getByRole('button', { name: /drag planning/i }));
     const utc = tz === 'Asia/Tokyo' ? ['2026-10-06T00:15:00.000Z', '2026-10-06T01:15:00.000Z'] : ['2026-10-06T13:15:00.000Z', '2026-10-06T14:15:00.000Z'];
     await waitFor(() => expect(mocked.updateEvent).toHaveBeenCalledWith('e1', { start_at: utc[0], end_at: utc[1] }));
   });
 });
 
+describe('all-day (month view) selection in a non-UTC saved zone', () => {
+  afterEach(() => { delete (window as any).__selectStr; });
+  test.each([
+    ['America/New_York', '2026-10-06T00:00', '2026-10-07T00:00'],
+    ['Asia/Tokyo', '2026-10-06T00:00', '2026-10-07T00:00'],
+  ])('dialog opens on local midnights in %s', async (tz, startVal, endVal) => {
+    mocked.getSettings.mockResolvedValue({ timezone: tz });
+    renderView();
+    await screen.findByText('Planning');
+    await waitFor(() => expect(screen.getByTestId('calendar')).toHaveAttribute('data-time-zone', tz));
+    // Real FullCalendar: date-only strings, end exclusive; Dates are not usable for all-day.
+    (window as any).__selectStr = { allDay: true, startStr: '2026-10-06', endStr: '2026-10-07', start: new Date('2026-10-06T00:00:00Z'), end: new Date('2026-10-07T00:00:00Z') };
+    await userEvent.click(screen.getByText('mock-select'));
+    await userEvent.click(within(screen.getByRole('toolbar')).getByRole('button', { name: /add event/i }));
+    expect(screen.getByLabelText(/^start/i)).toHaveValue(startVal);
+    expect(screen.getByLabelText(/^end/i)).toHaveValue(endVal);
+  });
+});
+
+describe('selectionRange', () => {
+  test.each([
+    ['America/New_York', '2026-10-06T04:00:00.000Z', '2026-10-08T04:00:00.000Z'],
+    ['Asia/Tokyo', '2026-10-05T15:00:00.000Z', '2026-10-07T15:00:00.000Z'],
+  ])('all-day range is local midnight to exclusive-end local midnight in %s', (tz, s, e) => {
+    const r = selectionRange({ allDay: true, startStr: '2026-10-06', endStr: '2026-10-08', start: new Date('2026-10-06'), end: new Date('2026-10-08') }, tz);
+    expect([r.start.toISOString(), r.end.toISOString()]).toEqual([s, e]);
+  });
+  test('timed ranges pass through the true instants', () => {
+    const start = new Date('2026-10-06T00:00:00Z'), end = new Date('2026-10-06T01:00:00Z');
+    expect(selectionRange({ start, end, startStr: '2026-10-06T09:00:00+09:00', endStr: '2026-10-06T10:00:00+09:00' }, 'Asia/Tokyo')).toEqual({ start, end });
+  });
+});
+
 describe('event tooltip follows the saved zone', () => {
-  afterEach(() => { delete (window as any).__dropStr; });
+  afterEach(() => { delete (window as any).__drop; });
   test('title is re-rendered in the new zone after the time zone changes', async () => {
     mocked.getSettings.mockResolvedValue({ timezone: 'Asia/Tokyo' });
     renderView();

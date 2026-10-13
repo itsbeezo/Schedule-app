@@ -60,3 +60,36 @@ test('changing the timezone changes weekly-zone conflict suppression', async () 
   await request(appA).put('/api/settings').send({ timezone: 'UTC' });
   expect((await request(appA).get('/api/conflicts')).body.active).toHaveLength(1);
 });
+
+test('PUT stores the canonical zone name', async () => {
+  const put = await request(appA).put('/api/settings').send({ timezone: 'america/new_york' });
+  expect(put.status).toBe(200);
+  expect(put.body).toEqual({ timezone: 'America/New_York' });
+});
+
+test('PUT rejects overlong input without echoing it', async () => {
+  const long = 'x'.repeat(65);
+  const res = await request(appA).put('/api/settings').send({ timezone: long });
+  expect(res.status).toBe(400);
+  expect(JSON.stringify(res.body)).not.toContain(long);
+});
+
+test('PUT creates the users row if missing; GET 404s when missing', async () => {
+  await ownerPool.query('DELETE FROM users WHERE id = $1', [USER_A]);
+  expect((await request(appA).get('/api/settings')).status).toBe(404);
+  const put = await request(appA).put('/api/settings').send({ timezone: 'Asia/Tokyo' });
+  expect(put.body).toEqual({ timezone: 'Asia/Tokyo' });
+  expect((await request(appA).get('/api/settings')).body).toEqual({ timezone: 'Asia/Tokyo' });
+});
+
+describe('CORS', () => {
+  const app = createApp({ pool: appPool, userId: USER_A }, ['http://localhost:3000']);
+  test('allows the dev client origin', async () => {
+    const res = await request(app).get('/api/settings').set('Origin', 'http://localhost:3000');
+    expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3000');
+  });
+  test('gives other origins no allow header', async () => {
+    const res = await request(app).get('/api/settings').set('Origin', 'http://evil.example');
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+});

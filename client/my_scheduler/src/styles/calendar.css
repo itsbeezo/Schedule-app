@@ -113,21 +113,9 @@
 }
 .fc .cal-zone .fc-event-title { color: var(--color-light-blue); font-size: var(--text-sm); font-weight: 600; }
 
-@property --edge { syntax: '<length>'; inherits: false; initial-value: 40px; }
-@keyframes edge-fade { from { --edge: 40px; } 85% { --edge: 40px; } to { --edge: 0px; } }
-
 @media (max-width: 600px) {
   .fc .fc-toolbar { flex-wrap: wrap; gap: var(--space-1); }
   .fc .fc-toolbar-title { font-size: var(--text-lg); }
-  /* week only: the 3-day, day and month views fit the phone width and must not scroll sideways */
-  .fc .fc-view-harness:has(.fc-timeGridWeek-view) {
-    overflow-x: auto;
-    /* right-edge fade says "scroll"; it shrinks to nothing as the grid reaches its end */
-    -webkit-mask-image: linear-gradient(to right, var(--color-bg) calc(100% - var(--edge)), transparent);
-    mask-image: linear-gradient(to right, var(--color-bg) calc(100% - var(--edge)), transparent);
-    animation: edge-fade linear both; animation-timeline: scroll(self inline);
-  }
-  .fc .fc-timeGridWeek-view .fc-scrollgrid { min-width: 640px; }
 }
 
 /* Month chips on phones: title only, ellipsized (the time pushed the title out of a ~50px cell) */

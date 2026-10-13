@@ -48,3 +48,6 @@ Known limits / frontend requests:
 - Selected swatch: the component does set `.swatch--selected` (and on the Default pill when no color is stored). New `outline: 2px solid var(--color-text); outline-offset: 2px` ring on both, plus a check mark before "Default" when selected. In the settings screenshot only Default is selected because no default color is stored; a stored color shows the ring on its circle (not verified live to avoid writing a preference).
 - Sticky "Save work hours": tried `position: sticky; bottom`; at the top of the drawer it floated over the Friday row, so it was dropped.
 - FRONTEND REQUEST: the custom color `<input type="color">` in ColorPicker has no visible label (a lone swatch on its own row at 390). Add a visible "Custom" label (e.g. `<label>` wrapping the input) so it reads as part of the picker.
+
+## 2026-10-13 cleanup: 3-day phone view replaced
+- The "3-day at 390" captures above (line 23) and the phone 3-day/week scroll rules are superseded. The phone 3-day view was replaced by the one-day view + date strip (see `design/PHONE-DAY-VIEW.md`); the week-only phone sideways scroll and its fade were removed from `styles/calendar.css`. The 3-day desktop zone-band note (line 39) still applies to desktop only.

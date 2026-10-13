@@ -5,7 +5,7 @@ type Info = Record<string, any>;
 export interface MockCalendarProps {
   events?: Info[];
   datesSet?: (arg: { start: Date; end: Date; view?: { currentStart: Date; type?: string } }) => void;
-  select?: (arg: { start: Date; end: Date; startStr?: string; endStr?: string }) => void;
+  select?: (arg: { start: Date; end: Date; startStr?: string; endStr?: string; allDay?: boolean }) => void;
   eventClick?: (arg: Info) => void;
   eventDrop?: (arg: Info) => void;
   eventResize?: (arg: Info) => void;
@@ -77,7 +77,7 @@ const FullCalendarMock = forwardRef<unknown, any>(function FullCalendarMock(rawP
               onClick={() => {
                 const start = new Date(new Date(e.start).getTime() + 3600000);
                 const end = new Date(new Date(e.end).getTime() + 3600000);
-                props.eventDrop?.({ event: { ...info.event, start, end, ...((window as any).__dropStr ? { startStr: (window as any).__dropStr.startStr, endStr: (window as any).__dropStr.endStr } : {}) }, revert: (window as any).__revert ?? (() => {}) });
+                props.eventDrop?.({ event: { ...info.event, start, end, ...((window as any).__drop ?? {}) }, revert: (window as any).__revert ?? (() => {}) });
               }}
             >
               drag {e.title}

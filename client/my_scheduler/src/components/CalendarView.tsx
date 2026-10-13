@@ -24,7 +24,7 @@ import { ConflictInfo, eventConflictState, indexConflicts } from '../lib/conflic
 import { workHoursToBackground } from '../lib/workHoursBand';
 import { zonesToBackground } from '../lib/zoneBand';
 import { readableTextOn } from '../styles/contrast';
-import { civilLocalDate, dateOnlyString, formatTimeIn, nextHourIn, todayIn } from '../lib/timezone';
+import { civilLocalDate, dateOnlyString, formatTimeIn, nextHourIn, todayIn, zonedTimeToDate } from '../lib/timezone';
 
 /** Month view shows at most this many events per day, then a "+N more" link that opens FullCalendar's popover. */
 export const MONTH_MAX_EVENTS = 3;
@@ -94,11 +94,27 @@ export function describeEvent(title: string, start: Date | null, end: Date | nul
   return end ? `${title}, ${from}\u2013${fmt(end)}` : `${title}, ${from}`;
 }
 
-/** An instant from FullCalendar's ISO string (which carries the zone offset); falls back to the Date it gave. */
-export const instantOf = (iso: string | undefined, fallback: Date): Date => {
-  const d = iso ? new Date(iso) : fallback;
-  return Number.isNaN(d.getTime()) ? fallback : d;
-};
+/**
+ * The instant range of a calendar selection. Timed selections: arg.start/end are already true
+ * instants (the named-zone plugin subtracts the zone offset). All-day selections (month view):
+ * the Dates are not usable and startStr/endStr are date-only ("2026-10-06", which would parse as UTC
+ * midnight), so use the saved zone's local midnight of the start date and of the exclusive end date.
+ */
+export function selectionRange(
+  arg: { start: Date; end: Date; startStr?: string; endStr?: string; allDay?: boolean },
+  tz: string
+): { start: Date; end: Date } {
+  if (arg.allDay) {
+    const civil = (str: string | undefined) => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(str ?? '');
+      return m ? { y: +m[1], m: +m[2] - 1, d: +m[3] } : null;
+    };
+    const s = civil(arg.startStr);
+    const e = civil(arg.endStr);
+    if (s && e) return { start: zonedTimeToDate(s, 0, 0, tz), end: zonedTimeToDate(e, 0, 0, tz) };
+  }
+  return { start: arg.start, end: arg.end };
+}
 
 export function toFullCalendarEvent(e: ApiEvent) {
   return {
@@ -282,7 +298,7 @@ export default function CalendarView() {
           data.setRange({ from: arg.start, to: arg.end });
           setCurrentDate(civilLocalDate(arg.view?.currentStart ?? arg.start, data.timezone));
         }}
-        select={(arg) => setSelection({ start: instantOf(arg.startStr, arg.start), end: instantOf(arg.endStr, arg.end) })}
+        select={(arg) => setSelection(selectionRange(arg, data.timezone))}
         eventDrop={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventResize={(info) => void persistEventChange(info, api.updateEvent, () => void data.reload(), showError)}
         eventDidMount={(arg) => {

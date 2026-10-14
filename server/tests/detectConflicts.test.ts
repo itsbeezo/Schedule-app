@@ -1,4 +1,5 @@
 import { detectConflicts, EventLike, ZoneLike, IgnoreLike } from '../src/conflicts/detectConflicts';
+import { DateTime } from 'luxon';
 
 const A = 'aaaaaaaa-0000-4000-8000-000000000001';
 const B = 'bbbbbbbb-0000-4000-8000-000000000002';
@@ -188,5 +189,94 @@ describe('ignores', () => {
     ];
     expect(detectConflicts(apart, [], [ignore({ mode: 'allow', overlap_start: null, overlap_end: null })], 'UTC'))
       .toEqual({ active: [], ignored: [] });
+  });
+});
+
+describe('weekly zones across daylight saving (America/New_York)', () => {
+  const NY = 'America/New_York';
+  const HOUR = 60 * 60 * 1000;
+  const MIN = 60 * 1000;
+  // Wall-clock time in New York as an exact instant (luxon resolves the offset for that day).
+  const ny = (iso: string) => DateTime.fromISO(iso, { zone: NY }).toJSDate();
+  // Weekly Sat 22:00 -> Sun 06:00 zone, created on `createdSat` (a Saturday in a non-DST week).
+  // Its elapsed length is 8h, so the end is start + 8h in absolute time, not 06:00 on the wall clock.
+  const overnightWeekly = (createdSatIso: string): ZoneLike => {
+    const start = ny(`${createdSatIso}T22:00`);
+    return { start_at: start, end_at: new Date(start.getTime() + 8 * HOUR), repeats_weekly: true };
+  };
+  // Two events whose overlap is exactly [from, to]: A starts 30 min early, B ends 30 min late.
+  const overlapOf = (from: Date, to: Date): EventLike[] => [
+    { id: A, start_at: new Date(from.getTime() - 30 * MIN), end_at: to },
+    { id: B, start_at: from, end_at: new Date(to.getTime() + 30 * MIN) },
+  ];
+
+  test('precondition: the zone is created on a Saturday and is still 8h long', () => {
+    const z = overnightWeekly('2026-02-21');
+    expect(DateTime.fromJSDate(z.start_at, { zone: NY }).weekday).toBe(6);
+    expect(z.end_at.getTime() - z.start_at.getTime()).toBe(8 * HOUR);
+  });
+
+  test('spring forward: the zone ends at 07:00 EDT (elapsed 8h), so 06:30-07:00 is inside and 07:00-07:30 is outside', () => {
+    const z = overnightWeekly('2026-02-21');
+    // The 03-07 22:00 EST occurrence plus 8h of elapsed time is 07:00 EDT (the zone's record stays on its creation week).
+    expect(ny('2026-03-08T07:00').getTime() - ny('2026-03-07T22:00').getTime()).toBe(8 * HOUR);
+
+    const insideFrom = ny('2026-03-08T06:30');
+    const boundary = ny('2026-03-08T07:00');
+    const outsideTo = ny('2026-03-08T07:30');
+
+    // The overlap 06:30-07:00 EDT is wholly inside the zone, so no conflict is raised.
+    expect(detectConflicts(overlapOf(insideFrom, boundary), [z], [], NY)).toEqual({ active: [], ignored: [] });
+
+    // The overlap 07:00-07:30 EDT starts exactly where the zone ends, so it is a conflict for its whole length.
+    const r = detectConflicts(overlapOf(boundary, outsideTo), [z], [], NY);
+    expect(r.active).toEqual([
+      { eventAId: A, eventBId: B, overlapStart: boundary, overlapEnd: outsideTo },
+    ]);
+  });
+
+  test('spring forward: an overlap straddling the 07:00 EDT end is not suppressed', () => {
+    const z = overnightWeekly('2026-02-21');
+    const r = detectConflicts(
+      overlapOf(ny('2026-03-08T06:59'), ny('2026-03-08T07:01')),
+      [z],
+      [],
+      NY
+    );
+    expect(r.active).toHaveLength(1);
+    expect(r.active[0].overlapStart).toEqual(ny('2026-03-08T06:59'));
+    expect(r.active[0].overlapEnd).toEqual(ny('2026-03-08T07:01'));
+  });
+
+  test('fall back: the zone ends at 05:00 EST (elapsed 8h), so 04:30-05:00 is inside and 05:00-05:30 is outside', () => {
+    // Created Sat 2026-09-26 (EDT, no transition that week).
+    const z = overnightWeekly('2026-09-26');
+    // The 10-31 22:00 EDT occurrence plus 8h of elapsed time is 05:00 EST, after the repeated 01:00-02:00 hour.
+    expect(ny('2026-11-01T05:00').getTime() - ny('2026-10-31T22:00').getTime()).toBe(8 * HOUR);
+    expect(DateTime.fromJSDate(ny('2026-11-01T05:00'), { zone: NY }).offset).toBe(-5 * 60);
+
+    const insideFrom = ny('2026-11-01T04:30');
+    const boundary = ny('2026-11-01T05:00');
+    const outsideTo = ny('2026-11-01T05:30');
+
+    expect(detectConflicts(overlapOf(insideFrom, boundary), [z], [], NY)).toEqual({ active: [], ignored: [] });
+
+    const r = detectConflicts(overlapOf(boundary, outsideTo), [z], [], NY);
+    expect(r.active).toEqual([
+      { eventAId: A, eventBId: B, overlapStart: boundary, overlapEnd: outsideTo },
+    ]);
+  });
+
+  test('an ordinary week (no DST change) keeps the same wall-clock behavior: 05:30-06:00 inside, 06:00-06:30 outside', () => {
+    // Created Sat 2026-06-06 (EDT all week).
+    const z = overnightWeekly('2026-06-06');
+    expect(z.end_at).toEqual(ny('2026-06-07T06:00'));
+
+    expect(detectConflicts(overlapOf(ny('2026-06-07T05:30'), ny('2026-06-07T06:00')), [z], [], NY))
+      .toEqual({ active: [], ignored: [] });
+
+    const r = detectConflicts(overlapOf(ny('2026-06-07T06:00'), ny('2026-06-07T06:30')), [z], [], NY);
+    expect(r.active).toHaveLength(1);
+    expect(r.active[0].overlapStart).toEqual(ny('2026-06-07T06:00'));
   });
 });

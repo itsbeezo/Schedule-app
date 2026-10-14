@@ -24,7 +24,7 @@ import { ConflictInfo, eventConflictState, indexConflicts } from '../lib/conflic
 import { workHoursToBackground } from '../lib/workHoursBand';
 import { zonesToBackground } from '../lib/zoneBand';
 import { readableTextOn } from '../styles/contrast';
-import { civilLocalDate, dateOnlyString, formatTimeIn, nextHourIn, todayIn, zonedTimeToDate } from '../lib/timezone';
+import { civilLocalDate, civilOf, dstNoteFor, dateOnlyString, formatTimeIn, nextHourIn, todayIn, zonedTimeToDate } from '../lib/timezone';
 
 /** Month view shows at most this many events per day, then a "+N more" link that opens FullCalendar's popover. */
 export const MONTH_MAX_EVENTS = 3;
@@ -292,6 +292,17 @@ export default function CalendarView() {
         initialView={narrow ? NARROW_INITIAL_VIEW : 'timeGridWeek'}
         headerToolbar={headerToolbar}
         scrollTime={scrollTime}
+        dayHeaderContent={(arg) => {
+          if (arg.view?.type === 'dayGridMonth' || !arg.date) return arg.text;
+          const note = dstNoteFor(civilOf(arg.date, data.timezone), data.timezone);
+          if (!note) return arg.text;
+          return (
+            <>
+              {arg.text}
+              <span className="cal-dst-note" title={note.explanation} aria-label={note.explanation}>{note.text}</span>
+            </>
+          );
+        }}
         events={calendarEvents}
         datesSet={(arg) => {
           if (!narrowRef.current && arg.view?.type) lastWideView.current = arg.view.type;

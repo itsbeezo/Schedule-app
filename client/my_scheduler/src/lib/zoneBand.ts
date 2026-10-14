@@ -23,13 +23,13 @@ export function zonesToBackground(
     const startDay = civilOf(start, timeZone);
     const endDay = civilOf(end, timeZone);
     const sp = zonedParts(start, timeZone);
-    const ep = zonedParts(end, timeZone);
+    const elapsedMs = end.getTime() - start.getTime();
     const dayOffset = civilDayNumber(endDay) - civilDayNumber(startDay);
     let day = addCivilDays(civilOf(rangeStart, timeZone), -dayOffset);
     while (zonedTimeToDate(day, 0, 0, timeZone) < rangeEnd) {
       if (civilWeekday(day) === civilWeekday(startDay) && civilDayNumber(day) >= civilDayNumber(startDay)) {
         const bandStart = zonedTimeToDate(day, sp.h, sp.min, timeZone);
-        const bandEnd = zonedTimeToDate(addCivilDays(day, dayOffset), ep.h, ep.min, timeZone);
+        const bandEnd = new Date(bandStart.getTime() + elapsedMs);
         if (bandStart < rangeEnd && bandEnd > rangeStart) {
           out.push({
             id: `zone-${z.id}-${day.y}-${day.m}-${day.d}`,

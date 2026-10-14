@@ -154,3 +154,27 @@ export function nextHourIn(tz: string, now: Date = new Date()): Date {
   const p = zonedParts(now, tz);
   return zonedTimeToDate({ y: p.y, m: p.m, d: p.d }, p.h + 1, 0, tz);
 }
+
+/** Length in hours of the civil day in `tz` (24 except on the two daylight-saving change days). */
+export function dayLengthHours(c: CivilDate, tz: string): number {
+  const start = zonedTimeToDate(c, 0, 0, tz).getTime();
+  const end = zonedTimeToDate(addCivilDays(c, 1), 0, 0, tz).getTime();
+  return (end - start) / 3600000;
+}
+
+export interface DstNote {
+  text: string;
+  explanation: string;
+}
+
+/** A short note for the day the clocks change by one hour in `tz`; null on every other day. */
+export function dstNoteFor(c: CivilDate, tz: string): DstNote | null {
+  const hours = dayLengthHours(c, tz);
+  if (hours === 23) {
+    return { text: 'Clocks forward 1h', explanation: 'Clocks go forward 1 hour on this day (daylight saving time starts)' };
+  }
+  if (hours === 25) {
+    return { text: 'Clocks back 1h', explanation: 'Clocks go back 1 hour on this day (daylight saving time ends)' };
+  }
+  return null;
+}

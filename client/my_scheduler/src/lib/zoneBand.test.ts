@@ -67,3 +67,28 @@ describe('saved time zone', () => {
     expect(bands.map((b) => b.start.toISOString())).toEqual(['2026-10-12T00:00:00.000Z']);
   });
 });
+
+describe('weekly zone elapsed length across DST (America/New_York)', () => {
+  const NY = 'America/New_York';
+  // Created Sat 2026-02-28 22:00 EST (03:00Z Sun) to Sun 2026-03-01 06:00 EST (11:00Z): elapsed 8h.
+  const night = { id: 'zd', start_at: '2026-03-01T03:00:00.000Z', end_at: '2026-03-01T11:00:00.000Z', repeats_weekly: true };
+
+  test('spring forward (Sun Mar 8): starts Sat 22:00 EST = 03:00Z, lasts 8h real time, ends 11:00Z = Sun 07:00 EDT', () => {
+    const [band] = zonesToBackground([night], new Date('2026-03-07T12:00:00Z'), new Date('2026-03-08T20:00:00Z'), NY);
+    expect(band.start.toISOString()).toBe('2026-03-08T03:00:00.000Z'); // Sat Mar 7 22:00 EST
+    expect(band.end.getTime() - band.start.getTime()).toBe(8 * 3600000);
+    expect(band.end.toISOString()).toBe('2026-03-08T11:00:00.000Z'); // 07:00 EDT
+  });
+
+  test('fall back (Sun Nov 1): starts Sat 22:00 EDT = 02:00Z, lasts 8h real time, ends 10:00Z = Sun 05:00 EST', () => {
+    const [band] = zonesToBackground([night], new Date('2026-10-31T12:00:00Z'), new Date('2026-11-01T20:00:00Z'), NY);
+    expect(band.start.toISOString()).toBe('2026-11-01T02:00:00.000Z');
+    expect(band.end.toISOString()).toBe('2026-11-01T10:00:00.000Z'); // 05:00 EST
+  });
+
+  test('an ordinary week keeps 22:00 -> 06:00 wall clock (8h)', () => {
+    const [band] = zonesToBackground([night], new Date('2026-06-13T12:00:00Z'), new Date('2026-06-14T20:00:00Z'), NY);
+    expect(band.start.toISOString()).toBe('2026-06-14T02:00:00.000Z'); // Sat Jun 13 22:00 EDT
+    expect(band.end.toISOString()).toBe('2026-06-14T10:00:00.000Z'); // Sun 06:00 EDT
+  });
+});

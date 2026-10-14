@@ -15,7 +15,7 @@ const CONTRACT = [
   'settings__section', 'date-strip', 'date-strip__header', 'date-strip__title', 'date-strip__chevron', 'date-strip__today',
   'date-strip__week', 'date-strip__cell', 'date-strip__dow', 'date-strip__day', 'date-strip__day--selected',
   'date-strip__day--today', 'date-strip__day--outside', 'date-strip__num', 'date-strip__picker', 'date-strip__picker-nav',
-  'date-strip__picker-title', 'date-strip__dow-row', 'date-strip__month', 'date-strip__row', 'calendar-grid',
+  'date-strip__picker-title', 'date-strip__dow-row', 'date-strip__month', 'date-strip__row', 'calendar-grid', 'cal-dst-note',
 ];
 
 test.each(CONTRACT)('defines .%s', (name) => {
@@ -32,4 +32,11 @@ test('interactive controls have a visible keyboard focus style', () => {
   const base = fs.readFileSync(path.join(dir, 'base.css'), 'utf8');
   expect(base).toMatch(/:focus-visible/);
   expect(base).toMatch(/prefers-reduced-motion/);
+});
+
+test('.cal-dst-note uses muted token, no hard-coded color, and wraps', () => {
+  const block = css.match(/\.fc \.cal-dst-note\s*\{[^}]*\}/)![0];
+  expect(block).toContain('color: var(--color-muted)');
+  expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+  expect(block).toMatch(/overflow-wrap:\s*anywhere/);
 });

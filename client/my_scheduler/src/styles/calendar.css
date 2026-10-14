@@ -23,6 +23,15 @@
 .fc .fc-button-primary:not(:disabled).fc-button-active { color: var(--color-on-purple); }
 .fc .fc-scrollgrid { border-radius: var(--radius-card); overflow: hidden; }
 .fc .fc-col-header-cell-cushion { color: var(--color-text); font-weight: 600; padding: var(--space-1); }
+/* Daylight-saving note under the day name/number in time-grid headers (two days a year). */
+.fc .cal-dst-note {
+  display: block; box-sizing: border-box; max-width: 100%; margin: 0 auto; padding: 0 2px;
+  font-size: 11px; font-weight: 400; line-height: 1.2; text-align: center; color: var(--color-muted);
+  overflow-wrap: anywhere; white-space: normal;
+}
+@media (max-width: 600px) {
+  .fc .cal-dst-note { font-size: 10px; line-height: 1.15; }
+}
 .fc .fc-timegrid-slot { height: 2.5em; }
 .fc .fc-event { padding: 2px 6px; border-radius: var(--radius-event); }
 

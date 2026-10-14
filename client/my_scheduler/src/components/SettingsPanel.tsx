@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as api from '../api/client';
 import { ConflictIgnore, ConflictZone, WorkHour } from '../api/types';
 import { DEFAULT_SCROLL_TIME, getDefaultEventColor, getScrollTime, setDefaultEventColor, setScrollTime } from '../lib/preferences';
-import { browserTimeZone, supportedTimeZones } from '../lib/timezone';
+import { browserTimeZone, TIME_ZONE_OPTIONS } from '../lib/timezone';
 import { isReservedColor } from '../styles/reservedColors';
 import ColorPicker from './ColorPicker';
+import ConfirmRemove from './ConfirmRemove';
 import { useToast } from './Toast';
 import WorkHoursEditor from './WorkHoursEditor';
 
@@ -31,24 +32,19 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
   const [color, setColor] = useState<string | null>(getDefaultEventColor());
   const [scrollTime, setScrollTimeState] = useState(() => getScrollTime().slice(0, 5));
   const deviceZone = browserTimeZone();
-  const baseZones = useMemo(() => supportedTimeZones(), []);
   const [savedZone, setSavedZone] = useState<string | null>(null);
   const [zoneDraft, setZoneDraft] = useState('');
   const [zoneError, setZoneError] = useState<string | null>(null);
   const [zoneSaving, setZoneSaving] = useState(false);
-  // Every supported zone, plus the draft / saved / device zones if they are aliases missing from the list,
-  // so the select never shows blank. UTC first, then one optgroup per region (text before the first "/").
-  const zoneGroups = useMemo(() => {
-    const all = new Set(baseZones);
-    [zoneDraft, savedZone, deviceZone].forEach((z) => { if (z) all.add(z); });
-    const groups = new Map<string, string[]>();
-    Array.from(all).sort().forEach((z) => {
-      const region = z.includes('/') ? z.slice(0, z.indexOf('/')) : '';
-      if (z === 'UTC') return;
-      groups.set(region, [...(groups.get(region) ?? []), z]);
+  // The curated list, plus the draft / saved / device zones (labelled with their IANA names) when missing,
+  // so the select never shows blank.
+  const zoneOptions = useMemo(() => {
+    const opts = [...TIME_ZONE_OPTIONS];
+    [zoneDraft, savedZone, deviceZone].forEach((z) => {
+      if (z && !opts.some((o) => o.value === z)) opts.push({ value: z, label: z });
     });
-    return Array.from(groups.entries()).sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
-  }, [baseZones, zoneDraft, savedZone, deviceZone]);
+    return opts;
+  }, [zoneDraft, savedZone, deviceZone]);
   const fmt = (iso: string) => fmtIn(iso, savedZone || deviceZone);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -209,14 +205,7 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
                 setZoneError(null);
               }}
             >
-              <option value="UTC">UTC</option>
-              {zoneGroups.map(([region, list]) => region === ''
-                ? list.map((z) => <option key={z} value={z}>{z}</option>)
-                : (
-                  <optgroup key={region} label={region}>
-                    {list.map((z) => <option key={z} value={z}>{z.slice(region.length + 1).replace(/_/g, ' ')}</option>)}
-                  </optgroup>
-                ))}
+              {zoneOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <button
               type="button"
@@ -268,9 +257,12 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
               {fmt(z.start_at)} to {fmt(z.end_at)}
               {z.repeats_weekly ? ' (repeats weekly)' : ''}
             </span>
-            <button type="button" className="btn btn--ghost" aria-label={`Remove zone ${fmt(z.start_at)}`} onClick={() => void run(() => api.deleteZone(z.id), 'Could not remove the zone.')}>
-              Remove
-            </button>
+            <ConfirmRemove
+              label="Remove"
+              ariaLabel={`Remove zone ${fmt(z.start_at)}`}
+              groupLabel={`Confirm removing zone ${fmt(z.start_at)}`}
+              onConfirm={() => void run(() => api.deleteZone(z.id), 'Could not remove the zone.')}
+            />
           </div>
         ))}
       </section>
@@ -283,9 +275,13 @@ export default function SettingsPanel({ onClose, onChanged, onScrollTimeChange }
             <span>
               {ig.event_a_title} and {ig.event_b_title} ({ig.mode === 'allow' ? 'always allowed' : 'ignored once'})
             </span>
-            <button type="button" className="btn btn--ghost" onClick={() => void run(() => api.deleteIgnore(ig.id), 'Could not restore the conflict.')}>
-              Restore conflict
-            </button>
+            <ConfirmRemove
+              label="Restore conflict"
+              ariaLabel={`Restore conflict ${ig.event_a_title} and ${ig.event_b_title}`}
+              groupLabel={`Confirm restoring conflict ${ig.event_a_title} and ${ig.event_b_title}`}
+              confirmLabel="Yes, restore"
+              onConfirm={() => void run(() => api.deleteIgnore(ig.id), 'Could not restore the conflict.')}
+            />
           </div>
         ))}
       </section>

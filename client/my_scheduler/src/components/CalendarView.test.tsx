@@ -354,6 +354,8 @@ describe('conflict states', () => {
     expect(screen.getByTestId('event-e1')).not.toHaveClass('cal-event--conflict');
     await userEvent.click(screen.getAllByRole('button', { name: /^allowed: overlaps with/i })[0]);
     await userEvent.click(screen.getByRole('button', { name: /restore conflict/i }));
+    expect(mocked.deleteIgnore).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, restore' }));
     await waitFor(() => expect(mocked.deleteIgnore).toHaveBeenCalledWith('ign1'));
   });
 

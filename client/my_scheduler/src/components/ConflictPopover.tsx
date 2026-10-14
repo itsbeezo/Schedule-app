@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import ConfirmRemove from './ConfirmRemove';
 import { AnchorRect, computePopoverPosition } from './popoverPosition';
 
 interface Props {
@@ -77,7 +78,13 @@ export default function ConflictPopover({ anchor, otherTitle, state, mode, onIgn
             {mode === 'allow' ? 'Allowed' : 'Ignored'} overlap with {otherTitle}
           </p>
           <div className="popover__actions">
-            <button type="button" className="btn" onClick={onRestore}>Restore conflict</button>
+            <ConfirmRemove
+              label="Restore conflict"
+              groupLabel={`Confirm restoring overlap with ${otherTitle}`}
+              confirmLabel="Yes, restore"
+              className="btn"
+              onConfirm={onRestore}
+            />
           </div>
         </>
       )}

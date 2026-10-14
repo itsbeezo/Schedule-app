@@ -1,4 +1,4 @@
-import { fromZonedInput, nextHourIn, todayIn, toZonedInput, formatTimeIn, dateOnlyString } from './timezone';
+import { TIME_ZONE_OPTIONS, isValidTimeZone, fromZonedInput, nextHourIn, todayIn, toZonedInput, formatTimeIn, dateOnlyString } from './timezone';
 
 const ZONES = ['Asia/Tokyo', 'America/New_York', 'UTC'];
 
@@ -45,4 +45,13 @@ test('today and the next hour are read in the given zone, not the device zone', 
 
 test('formatTimeIn formats in the zone', () => {
   expect(formatTimeIn(new Date('2026-10-06T00:00:00Z'), 'Asia/Tokyo')).toMatch(/9:00\s?AM/);
+});
+
+test('every curated time zone option is a valid, unique IANA zone with a label', () => {
+  expect(TIME_ZONE_OPTIONS.length).toBeLessThan(40);
+  for (const o of TIME_ZONE_OPTIONS) {
+    expect(isValidTimeZone(o.value)).toBe(true);
+    expect(o.label).toBeTruthy();
+  }
+  expect(new Set(TIME_ZONE_OPTIONS.map((o) => o.value)).size).toBe(TIME_ZONE_OPTIONS.length);
 });

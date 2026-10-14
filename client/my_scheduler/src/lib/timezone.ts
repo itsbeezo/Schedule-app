@@ -30,22 +30,44 @@ export function isValidTimeZone(tz: string): boolean {
   }
 }
 
-const FALLBACK_ZONES = [
-  'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Anchorage',
-  'Pacific/Honolulu', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
-  'Africa/Johannesburg', 'Asia/Dubai', 'Asia/Kolkata', 'Asia/Shanghai', 'Asia/Tokyo', 'Australia/Sydney', 'Pacific/Auckland',
-];
-
-export function supportedTimeZones(): string[] {
-  const fn = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf;
-  try {
-    const list = fn ? fn('timeZone') : [];
-    if (list.length > 0) return list.includes('UTC') ? list : ['UTC', ...list];
-  } catch {
-    /* fall through */
-  }
-  return FALLBACK_ZONES;
+export interface TimeZoneOption {
+  value: string;
+  label: string;
 }
+
+/** Short curated list for the settings select: one entry per commonly used zone. */
+export const TIME_ZONE_OPTIONS: TimeZoneOption[] = [
+  { value: 'UTC', label: 'UTC' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (Honolulu)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (Anchorage)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (Los Angeles)' },
+  { value: 'America/Denver', label: 'Mountain Time (Denver)' },
+  { value: 'America/Phoenix', label: 'Arizona Time (Phoenix)' },
+  { value: 'America/Chicago', label: 'Central Time (Chicago)' },
+  { value: 'America/New_York', label: 'Eastern Time (New York)' },
+  { value: 'America/Halifax', label: 'Atlantic Time (Halifax)' },
+  { value: 'America/St_Johns', label: 'Newfoundland Time (St. John\'s)' },
+  { value: 'America/Mexico_City', label: 'Mexico City' },
+  { value: 'America/Sao_Paulo', label: 'Brasilia Time (Sao Paulo)' },
+  { value: 'America/Argentina/Buenos_Aires', label: 'Argentina (Buenos Aires)' },
+  { value: 'Europe/London', label: 'United Kingdom (London)' },
+  { value: 'Europe/Paris', label: 'Central European Time (Paris)' },
+  { value: 'Europe/Athens', label: 'Eastern European Time (Athens)' },
+  { value: 'Europe/Moscow', label: 'Moscow Time' },
+  { value: 'Africa/Cairo', label: 'Egypt (Cairo)' },
+  { value: 'Africa/Johannesburg', label: 'South Africa (Johannesburg)' },
+  { value: 'Africa/Nairobi', label: 'East Africa (Nairobi)' },
+  { value: 'Asia/Dubai', label: 'Gulf Time (Dubai)' },
+  { value: 'Asia/Karachi', label: 'Pakistan (Karachi)' },
+  { value: 'Asia/Kolkata', label: 'India (Kolkata)' },
+  { value: 'Asia/Dhaka', label: 'Bangladesh (Dhaka)' },
+  { value: 'Asia/Bangkok', label: 'Indochina Time (Bangkok)' },
+  { value: 'Asia/Singapore', label: 'Singapore' },
+  { value: 'Asia/Shanghai', label: 'China (Shanghai)' },
+  { value: 'Asia/Tokyo', label: 'Japan (Tokyo)' },
+  { value: 'Australia/Sydney', label: 'Eastern Australia (Sydney)' },
+  { value: 'Pacific/Auckland', label: 'New Zealand (Auckland)' },
+];
 
 const formatters = new Map<string, Intl.DateTimeFormat>();
 function formatter(tz: string): Intl.DateTimeFormat {

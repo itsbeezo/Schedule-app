@@ -37,10 +37,33 @@ test('shows work hours, zones, and allowed overlaps loaded from the server', asy
   expect(screen.getByText(/review/i)).toBeInTheDocument();
 });
 
+test('cancelling or pressing Escape on the zone confirmation keeps the zone', async () => {
+  setup();
+  const remove = await screen.findByRole('button', { name: /remove zone/i });
+  await userEvent.click(remove);
+  await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.getByRole('button', { name: /remove zone/i })).toHaveFocus();
+  await userEvent.click(screen.getByRole('button', { name: /remove zone/i }));
+  await userEvent.keyboard('{Escape}');
+  expect(screen.getByRole('button', { name: /remove zone/i })).toHaveFocus();
+  expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument();
+  expect(mocked.deleteZone).not.toHaveBeenCalled();
+});
+
+test('restoring an allowed overlap needs confirmation', async () => {
+  setup();
+  await userEvent.click(await screen.findByRole('button', { name: /restore conflict/i }));
+  expect(mocked.deleteIgnore).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', { name: 'Yes, restore' }));
+  await waitFor(() => expect(mocked.deleteIgnore).toHaveBeenCalledWith('i1'));
+});
+
 test('removing a zone calls the API and tells the calendar to reload', async () => {
   mocked.listZones.mockReset().mockResolvedValueOnce([zone]).mockResolvedValue([]);
   const props = setup();
   await userEvent.click(await screen.findByRole('button', { name: /remove zone/i }));
+  expect(mocked.deleteZone).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
   await waitFor(() => expect(mocked.deleteZone).toHaveBeenCalledWith('z1'));
   expect(props.onChanged).toHaveBeenCalled();
   await waitFor(() => expect(screen.queryByRole('button', { name: /remove zone/i })).toBeNull());
@@ -50,6 +73,7 @@ test('restoring a conflict deletes the allowance', async () => {
   mocked.listIgnores.mockReset().mockResolvedValueOnce([ignore]).mockResolvedValue([]);
   const props = setup();
   await userEvent.click(await screen.findByRole('button', { name: /restore conflict/i }));
+  await userEvent.click(screen.getByRole('button', { name: 'Yes, restore' }));
   await waitFor(() => expect(mocked.deleteIgnore).toHaveBeenCalledWith('i1'));
   expect(props.onChanged).toHaveBeenCalled();
 });
@@ -167,7 +191,10 @@ describe('time zone field', () => {
     setup();
     const select = await field();
     await waitFor(() => expect(select).toHaveValue('US/Pacific'));
-    expect(within(select).getAllByRole('option').length).toBeGreaterThan(15);
+    const options = within(select).getAllByRole('option');
+    expect(options.length).toBeLessThan(40);
+    expect(within(select).getByRole('option', { name: 'US/Pacific' })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: 'Eastern Time (New York)' })).toHaveValue('America/New_York');
     expect(within(select).getByRole('option', { name: 'UTC' })).toBeInTheDocument();
   });
 
